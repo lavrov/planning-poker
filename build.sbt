@@ -16,6 +16,7 @@ lazy val client = project
     libraryDependencies += "io.github.outwatch" %%% "outwatch" % "1.0.0-RC2",
     scalaJSUseMainModuleInitializer := true,
     webpackBundlingMode := BundlingMode.LibraryOnly(),
-    workbenchStartMode := WorkbenchStartModes.Manual
+    workbenchStartMode := WorkbenchStartModes.Manual,
+    workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index.html", "client/target"))
   )
 
