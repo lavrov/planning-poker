@@ -22,16 +22,18 @@ case class Estimates(
 sealed trait Card
 object Card {
   case class Number(value: Int) extends Card
+  case object Dunno extends Card
 }
 
-sealed trait Action
-object Action {
-  case class AddParticipant(participant: Participant) extends Action
-  case class RegisterEstimate(participantId: String, card: Card) extends Action
-}
 
 object PlanningSession {
+  sealed trait Action
+  object Action {
+    case class AddParticipant(participant: Participant) extends Action
+    case class RegisterEstimate(participantId: String, card: Option[Card]) extends Action
+  }
   import Action._
+
   def update(model: PlanningSession, action: Action): PlanningSession = action match {
     case AddParticipant(participant) =>
       model.copy(
@@ -40,7 +42,13 @@ object PlanningSession {
       if (model.participants.exists(_.id == participantId))
         model.copy(
           estimates = model.estimates.copy(
-            participantEstimates = model.estimates.participantEstimates.updated(participantId, card)))
+            participantEstimates =
+              card match {
+                case Some(c) =>
+                  model.estimates.participantEstimates.updated(participantId, c)
+                case None =>
+                  model.estimates.participantEstimates - participantId
+              }))
       else
         model
   }
