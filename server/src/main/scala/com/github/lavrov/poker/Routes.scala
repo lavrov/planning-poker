@@ -33,15 +33,11 @@ trait Routes  {
         pathEnd {
           concat(
             get {
-              val users: Future[PlanningSession] = ???
               complete(???)
-            }/*,
+            },
             post {
-              entity(as[PlanningSession]) { session =>
-                val sessionCreated: Future[ActionPerformed] = ???
-                complete((StatusCodes.Created))
-              }
-            }*/
+              handleWebSocketMessages(PokerFlow.sessionPostHandler)
+            }
           )
         }
       )
