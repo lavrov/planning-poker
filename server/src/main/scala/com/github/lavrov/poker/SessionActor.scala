@@ -1,30 +1,33 @@
 package com.github.lavrov.poker
 
-import akka.actor.{ Actor, ActorLogging, Props }
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 
 
 object SessionActor {
-  final case class AddParticipant(participant: Participant)
-  final case class ClearEstimates()
-  case class Vote(participant: Participant, card: Card)
-  def props: Props = Props[SessionActor]
+  final case class Subscribe(ref: ActorRef)
+  final case class SessionAction(action: PlanningSession.Action)
+  def props: Props = Props[SessionActor](new SessionActor)
 }
 
 //TODO Send BroadCasts and reply
 
-class SessionActor( val id: UserStory) extends Actor with ActorLogging {
+class SessionActor extends Actor with ActorLogging {
   import SessionActor._
 
-  var participantEstimates: Map[String, Card] = Map()
-  var participants: List[Participant] = List[Participant]()
+  var subscribers: List[ActorRef] = Nil
+  var planningSession: PlanningSession = PlanningSession(
+    Nil,
+    Estimates(
+      UserStory("blah"),
+      Map.empty
+    )
+  )
 
   def receive: Receive = {
-    case AddParticipant(participant) =>
-      participants :+ participant
-    case ClearEstimates =>
-      participantEstimates = Map()
-    case Vote(participant, card) =>
-      participantEstimates += (participant.id -> card)
-
+    case Subscribe(ref) => subscribers = ref :: subscribers
+    case SessionAction(action) =>
+      val updated = PlanningSession.update(planningSession, action)
+      planningSession = updated
+      subscribers.foreach(_ ! planningSession)
   }
 }
