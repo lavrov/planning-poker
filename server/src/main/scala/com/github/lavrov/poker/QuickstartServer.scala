@@ -12,7 +12,7 @@ object QuickstartServer extends App with Routes {
   implicit val system: ActorSystem = ActorSystem("planningPoker")
   implicit val materializer: ActorMaterializer = ActorMaterializer()
 
-  val sessionActor: ActorRef = system.actorOf(SessionActor.props, "sessionActor")
+  val sessionManager: ActorRef = system.actorOf(SessionManager.props, "sessionManager")
 
   lazy val routes: Route = Routes
 
