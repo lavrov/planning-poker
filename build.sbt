@@ -38,7 +38,9 @@ lazy val client = project
   .dependsOn(sharedJs)
   .settings(
     scalaVersion := "2.12.4",
-    libraryDependencies += "io.github.outwatch" %%% "outwatch" % versions.outwatch,
+    libraryDependencies ++= Seq(
+      "io.github.outwatch" %%% "outwatch" % versions.outwatch
+    ),
     scalaJSUseMainModuleInitializer := true,
     webpackBundlingMode := BundlingMode.LibraryOnly(),
     workbenchStartMode := WorkbenchStartModes.Manual,

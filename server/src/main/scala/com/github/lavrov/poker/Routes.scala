@@ -8,6 +8,7 @@ import akka.event.Logging
 
 import scala.concurrent.duration._
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Route
 import io.circe.generic.auto._
@@ -32,19 +33,20 @@ trait Routes {
   implicit lazy val timeout = Timeout(30.seconds)
 
   lazy val Routes: Route =
-    pathPrefix("session" / Segment) { sessionId =>
-      // TODO
-      val sessionActorRef: ActorRef = Await.result(
-        system.actorSelection(s"/user/$sessionId").resolveOne(1.second), 2.seconds)
-      val (ref: ActorRef, source: Source[Message, _]) =
-        Source
-          .actorRef[Message](100, OverflowStrategy.dropNew)
-          .preMaterialize()
-      sessionActorRef ! Subscribe(ref)
+    respondWithHeader(`Access-Control-Allow-Origin`.*) {
+      pathPrefix("session" / Segment) { sessionId =>
+        // TODO
+        val sessionActorRef: ActorRef = Await.result(
+          system.actorSelection(s"/user/$sessionId").resolveOne(1.second), 2.seconds)
+        val (ref: ActorRef, source: Source[Message, _]) =
+          Source
+            .actorRef[Message](100, OverflowStrategy.dropNew)
+            .preMaterialize()
+        sessionActorRef ! Subscribe(ref)
 
-      val sink: Sink[Message, NotUsed] =
-        Sink.actorRef[PlanningSession.Action](sessionActorRef, ())
-          .contramap[Message] {
+        val sink: Sink[Message, NotUsed] =
+          Sink.actorRef[PlanningSession.Action](sessionActorRef, ())
+            .contramap[Message] {
             case TextMessage.Strict(tm) =>
               log.info(tm)
               decode[PlanningSession.Action](tm) match {
@@ -57,14 +59,15 @@ trait Routes {
               }
           }
 
-      handleWebSocketMessages(Flow.fromSinkAndSource(sink, source))
-    } ~
-  path("session"){
-    post{
-      val id = UUID.randomUUID().toString
-      val ref = system.actorOf(SessionActor.props, id)
-      log.info(ref.path.toString)
-      complete(id)
+        handleWebSocketMessages(Flow.fromSinkAndSource(sink, source))
+      } ~
+      path("session") {
+        post {
+          val id = UUID.randomUUID().toString
+          val ref = system.actorOf(SessionActor.props, id)
+          log.info(ref.path.toString)
+          complete(id)
+        }
+      }
     }
-  }
 }
