@@ -1,13 +1,14 @@
 package client.view
 
 import client.PlanningPokerApp
-import client.PlanningPokerApp.Store
+import client.PlanningPokerApp.{Action, Store}
 import com.github.lavrov.poker.{Card, Participant, PlanningSession}
+import outwatch.Sink
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
 
 object PlanningSessionView {
-  def render(planningSession: PlanningSession, userOpt: Option[Participant], store: Store): VNode = {
+  def render(planningSession: PlanningSession, userOpt: Option[Participant], store: Sink[Action]): VNode = {
     val allGaveEstimates =
       planningSession.participants
         .map(_.id)

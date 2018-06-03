@@ -3,6 +3,7 @@ package client
 import client.PlanningPokerApp.{AppState, Store}
 import monix.execution.Scheduler.Implicits.global
 import outwatch.dom.OutWatch
+import outwatch.dom.dsl._
 
 object Main {
   def main(args: Array[String]): Unit = {
@@ -12,7 +13,8 @@ object Main {
     val run =
       for {
         store <- Store(initState)
-        root = PlanningPokerApp.view(store)
+        (source, sink) = store
+        root = div(child <-- source.map(PlanningPokerApp.view(_, sink)))
         _ <- OutWatch.renderInto("#app", root)
       } yield ()
 
