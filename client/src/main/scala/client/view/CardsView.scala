@@ -23,19 +23,19 @@ object CardsView {
         renderCard(
           card,
           selected.contains(card),
-          onSelect.redirectMap(Some(_))
+          onSelect
         )
       ),
       button("clear", onClick(None) --> onSelect)
     )
 
-  private def renderCard(card: Card, selected: Boolean, onSelect: Sink[Card]) = {
+  private def renderCard(card: Card, selected: Boolean, onSelect: Sink[Option[Card]]) = {
     val text = cardSign(card)
     val cls = if (selected) Some("selected") else None
     button(
-      text,
+      if (selected) strong(text) else text,
       classNames := cls,
-      onClick(card) --> onSelect
+      onClick(if (selected) None else Some(card)) --> onSelect
     )
   }
 

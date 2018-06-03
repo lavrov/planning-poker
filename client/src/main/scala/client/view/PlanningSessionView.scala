@@ -19,7 +19,7 @@ object PlanningSessionView {
       hr(),
       userOpt.filter(isParticipating).fold(div()){
         user => CardsView.render(
-          None,
+          planningSession.estimates.participantEstimates.get(user.id),
           store.redirectMap { card =>
             PlanningPokerApp.Action.SendPlanningSessionAction(
               PlanningSession.Action.RegisterEstimate(user.id, card))
