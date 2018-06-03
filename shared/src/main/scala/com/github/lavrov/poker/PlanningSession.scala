@@ -1,6 +1,7 @@
 package com.github.lavrov.poker
 
-case class PlanningSession(
+
+ case class PlanningSession(
     participants: List[Participant],
     estimates: Estimates
 )

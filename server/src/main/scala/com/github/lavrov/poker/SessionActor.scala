@@ -9,12 +9,10 @@ object SessionActor {
   def props: Props = Props[SessionActor](new SessionActor)
 }
 
-//TODO Send BroadCasts and reply
-
 class SessionActor extends Actor with ActorLogging {
   import SessionActor._
 
-  var subscribers: List[ActorRef] = Nil
+  var subscribers: Set[ActorRef] = Set.empty
   var planningSession: PlanningSession = PlanningSession(
     Nil,
     Estimates(
@@ -24,7 +22,7 @@ class SessionActor extends Actor with ActorLogging {
   )
 
   def receive: Receive = {
-    case Subscribe(ref) => subscribers = ref :: subscribers
+    case Subscribe(ref) => subscribers += ref
     case SessionAction(action) =>
       val updated = PlanningSession.update(planningSession, action)
       planningSession = updated
