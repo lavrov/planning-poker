@@ -13,12 +13,11 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
   def createStore: IO[Store] =
     for {
       handler <- Handler.create[Action]
+      store0 = outwatch.util.Store(initState, reducer, handler)
+      _ <- store0 <-- Router.create()
+      store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
     }
-    yield {
-      val store0 = outwatch.util.Store(initState, reducer, handler)
-      val store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
-      store1
-    }
+    yield store1
 
   def reducer(state: AppState, action: Action): (AppState, Option[IO[Action]]) = action match {
     case Action.RequestSession() =>

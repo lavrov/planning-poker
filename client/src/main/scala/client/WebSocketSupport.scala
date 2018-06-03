@@ -34,7 +34,7 @@ object WebSocketSupport {
             currentSub = None
 
         def connect(sub: Sub.WebSocket): IO[Unit] = for {
-          ws <-getOrElseCreate(sub.url)
+          ws <- getOrElseCreate(sub.url)
           _ <- store.sink <-- ws.source.map { m => sub.actionFn(m.data.toString) }
         }
           yield
