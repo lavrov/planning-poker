@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.directives.PathDirectives.path
 import scala.concurrent.Future
 import java.util.UUID
 
+import akka.Done
 import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
 
@@ -16,9 +17,9 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Route
+import io.circe.syntax._
 import io.circe.generic.auto._
 import io.circe.parser._
-
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
@@ -38,11 +39,12 @@ import CirceSupport._
 
   lazy val Routes: Route =
     respondWithHeader(`Access-Control-Allow-Origin`.*) {
-      pathPrefix("session/ws" / Segment) { sessionId =>
+      pathPrefix("session" / "ws" / Segment) { sessionId =>
 
-        val (ref: ActorRef, source: Source[Message, _]) =
+        val (ref: ActorRef, source: Source[TextMessage.Strict, _]) =
           Source
-            .actorRef[Message](100, OverflowStrategy.dropNew)
+            .actorRef[PlanningSession](100, OverflowStrategy.dropNew)
+            .map(m => TextMessage.Strict(m.asJson.noSpaces))
             .preMaterialize()
         sessionManager ! Subscribe(sessionId, ref)
 
@@ -62,22 +64,14 @@ import CirceSupport._
 
         handleWebSocketMessages(Flow.fromSinkAndSource(sink, source))
       } ~
-        path("session" / Segment) { sessionId =>
-          get {
-            val planningSession: Future[PlanningSession] =
-              (sessionManager ? RequestSession(sessionId))
-                .mapTo[PlanningSession]
-            complete(planningSession)
-          }
-        } ~
-        path("session") {
-          post {
-            val id = UUID.randomUUID().toString
-            val ref = system.actorOf(SessionActor.props, id)
-            log.info(ref.path.toString)
-            complete(id)
-          }
+      path("session") {
+        post {
+          val id = UUID.randomUUID().toString
+          complete(
+            (sessionManager ? RequestSession(id)).mapTo[Done].map(_ => id)(system.dispatcher)
+          )
         }
+      }
     }
 }
 

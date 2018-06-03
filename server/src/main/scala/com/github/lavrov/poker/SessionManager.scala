@@ -1,5 +1,6 @@
 package com.github.lavrov.poker
 
+import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import com.github.lavrov.poker.SessionActor.SessionAction
 
@@ -18,20 +19,23 @@ class SessionManager extends Actor with ActorLogging {
   override def receive: Receive = {
     case RequestSession(id) =>
       sessionIdToActor.get(id) match {
-        case Some(sessionRef) => sessionRef forward SessionAction
+        case Some(sessionRef) =>
+          sender() ! Done
         case None =>
           val sessionRef = context.actorOf(SessionActor.props, id)
           sessionIdToActor += (id -> sessionRef)
-          sessionRef forward SessionAction
+          sender() ! Done
       }
     case Subscribe(id: String, ref: ActorRef) =>
       sessionIdToActor.get(id) match {
-        case Some(sessionRef) => sessionRef forward SessionActor.Subscribe(ref)
+        case Some(sessionRef) =>
+          log.info(s"Forward to $sessionRef")
+          sessionRef forward SessionActor.Subscribe(ref)
         case None             =>
       }
     case IncomingMessage(id, action: PlanningSession.Action) =>
       sessionIdToActor.get(id) match {
-        case Some(sessionRef) => sessionRef forward action
+        case Some(sessionRef) => sessionRef forward SessionAction(action)
         case None             =>
       }
 

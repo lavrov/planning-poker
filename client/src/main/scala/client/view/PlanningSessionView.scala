@@ -13,14 +13,15 @@ object PlanningSessionView {
       planningSession.participants
         .map(_.id)
         .forall(planningSession.estimates.participantEstimates.contains)
+    def isParticipating(user: Participant) = planningSession.participants.contains(user)
     div(
       h1(planningSession.estimates.userStory.description),
       hr(),
-      userOpt.fold(div()){
+      userOpt.filter(isParticipating).fold(div()){
         user => CardsView.render(
           None,
           store.redirectMap { card =>
-            PlanningPokerApp.Action.SessionAction(
+            PlanningPokerApp.Action.SendPlanningSessionAction(
               PlanningSession.Action.RegisterEstimate(user.id, card))
           }
         )
@@ -37,7 +38,7 @@ object PlanningSessionView {
                   "+"
               }
               .getOrElse("-")
-          li(name, status)
+          li(name, " ", status)
         }
       )
     )

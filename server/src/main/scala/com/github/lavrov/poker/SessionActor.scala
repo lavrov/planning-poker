@@ -22,7 +22,10 @@ class SessionActor extends Actor with ActorLogging {
   )
 
   def receive: Receive = {
-    case Subscribe(ref) => subscribers += ref
+    case Subscribe(ref) =>
+      log.info(s"New subscriber")
+      subscribers += ref
+      ref ! planningSession
     case SessionAction(action) =>
       val updated = PlanningSession.update(planningSession, action)
       planningSession = updated
