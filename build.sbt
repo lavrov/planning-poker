@@ -41,6 +41,15 @@ lazy val client = project
     libraryDependencies ++= Seq(
       "io.github.outwatch" %%% "outwatch" % versions.outwatch
     ),
+    npmDependencies in Compile ++= Seq(
+      "bootstrap" -> "4.0.0",
+      "jquery" -> "1.9.1",
+      "popper.js" -> "1.12.9"
+    ),
+    npmDevDependencies in Compile ++= Seq(
+      "style-loader" -> "0.21.0",
+      "css-loader" -> "0.28.11"
+    ),
     scalaJSUseMainModuleInitializer := true,
     webpackBundlingMode := BundlingMode.LibraryOnly(),
     workbenchStartMode := WorkbenchStartModes.Manual,
