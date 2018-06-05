@@ -34,7 +34,7 @@ object CardsView {
     val cls = if (selected) Some("selected") else None
     button(
       if (selected) strong(text) else text,
-      classNames := cls,
+      classNames := cls ++ Seq("btn", "btn-sm"),
       onClick(if (selected) None else Some(card)) --> onSelect
     )
   }

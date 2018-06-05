@@ -10,10 +10,10 @@ import outwatch.dom.dsl._
 object PlanningSessionView {
   def render(planningSession: PlanningSession, userOpt: Option[Participant], store: Sink[Action]): VNode = {
     val allGaveEstimates =
-      planningSession.participants
+      planningSession.players
         .map(_.id)
         .forall(planningSession.estimates.participantEstimates.contains)
-    def isParticipating(user: Participant) = planningSession.participants.contains(user)
+    def isParticipating(user: Participant) = planningSession.players.contains(user)
     div(
       h1(planningSession.estimates.userStory.description),
       hr(),
@@ -27,7 +27,7 @@ object PlanningSessionView {
         )
       },
       ul(
-        planningSession.participants.map { participant =>
+        planningSession.players.map { participant =>
           val name = participant.name
           val status =
             planningSession.estimates.participantEstimates.get(participant.id)

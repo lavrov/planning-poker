@@ -15,8 +15,9 @@ class SessionActor extends Actor with ActorLogging {
   var subscribers: Set[ActorRef] = Set.empty
   var planningSession: PlanningSession = PlanningSession(
     Nil,
+    Nil,
     Estimates(
-      UserStory("blah"),
+      UserStory("story description here"),
       Map.empty
     )
   )

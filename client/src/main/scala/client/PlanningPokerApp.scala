@@ -6,6 +6,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import outwatch.{Handler, Sink}
 import outwatch.http.Http
+import io.circe.syntax._, io.circe.generic.auto._
 
 class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppState) {
   import PlanningPokerApp._
@@ -49,7 +50,6 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) -> None
     case Action.SendPlanningSessionAction(psAction) =>
       state -> state.session.map(_.id).map { sessionId =>
-        import io.circe.syntax._, io.circe.generic.auto._
         WebSocketSupport.send(endpoints.session.ws(sessionId), psAction.asJson.noSpaces)
       }
     case Action.Noop =>

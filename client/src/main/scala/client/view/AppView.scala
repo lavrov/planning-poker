@@ -2,7 +2,7 @@ package client.view
 
 import client.PlanningPokerApp
 import client.PlanningPokerApp.{Action, AppState}
-import com.github.lavrov.poker.PlanningSession
+import com.github.lavrov.poker.{Participant, PlanningSession}
 import outwatch.Sink
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
@@ -10,38 +10,37 @@ import outwatch.dom.dsl._
 object AppView {
 
   def render(state: AppState, sink: Sink[Action]): VNode = {
-    def sessionJoinSink(state: AppState): Option[Sink[Unit]] =
-      state.session.flatMap(_.planningSession).zip(state.user).headOption // if user and session are defined
+    def sessionJoinSink(user: Participant): Option[Sink[Unit]] = {
+      state.session.flatMap(_.planningSession)
         .collect {
-        case (session, user) if !session.participants.contains(user) =>
-          sink.redirectMap(_ =>
-            PlanningPokerApp.Action.SendPlanningSessionAction(
-              PlanningSession.Action.AddParticipant(user)))
-      }
-    div(
-      UserView.render(
-        state.user,
-        sessionJoinSink(state),
-        sink.redirectMap(PlanningPokerApp.Action.Login)
-      ),
-      state.session match {
-        case Some(session) =>
-          session.planningSession match {
-            case Some(planningSession) =>
-              PlanningSessionView.render(planningSession, state.user, sink)
+          case session if !session.players.contains(user) =>
+            sink.redirectMap(_ =>
+              PlanningPokerApp.Action.SendPlanningSessionAction(
+                PlanningSession.Action.AddPlayer(user)))
+        }
+    }
+    state.user match {
+      case None =>
+        SignInView.render(sink.redirectMap(PlanningPokerApp.Action.Login))
+      case Some(user) =>
+        div(
+          div(user.name,
+            sessionJoinSink(user).map( joinSink =>
+              button(className := "btn btn-sm", "Join", onClick(()) --> joinSink))),
+          state.session match {
+            case Some(session) =>
+              session.planningSession match {
+                case Some(planningSession) =>
+                  PlanningSessionView.render(planningSession, state.user, sink)
+                case None =>
+                  div("Connecting...")
+              }
             case None =>
-              div("Connecting...")
+              div(className := "text-center",
+                button(classNames := Seq("btn", "btn-lg btn-primary"), "Start session",
+                  onClick(Action.RequestSession()) --> sink))
           }
-        case None =>
-          button(
-            "Start session",
-            onClick(Action.RequestSession()) --> sink
-          )
-      },
-      state.session match {
-        case Some(session) => div("Session id: ", session.id)
-        case None => div()
-      }
-    )
+        )
+    }
   }
 }

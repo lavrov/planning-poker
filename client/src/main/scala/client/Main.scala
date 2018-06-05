@@ -9,6 +9,7 @@ import outwatch.dom.dsl._
 object Main {
   def main(args: Array[String]): Unit = {
     BootstrapCSS
+    CSSLoader
     val initState = AppState(None, None)
     val endpoints = new Endpoints("localhost:8080")
     val app = new PlanningPokerApp(endpoints, initState)

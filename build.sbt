@@ -42,9 +42,9 @@ lazy val client = project
       "io.github.outwatch" %%% "outwatch" % versions.outwatch
     ),
     npmDependencies in Compile ++= Seq(
-      "bootstrap" -> "4.0.0",
+      "bootstrap" -> "4.1.0",
       "jquery" -> "1.9.1",
-      "popper.js" -> "1.12.9"
+      "popper.js" -> "1.14.0"
     ),
     npmDevDependencies in Compile ++= Seq(
       "style-loader" -> "0.21.0",
