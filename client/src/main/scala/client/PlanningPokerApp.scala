@@ -13,9 +13,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 
   def createStore: IO[Store] =
     for {
-      handler <- Handler.create[Action]
-      store0 = outwatch.util.Store(initState, reducer, handler)
-      _ <- store0 <-- Router.create()
+      store0 <- Store.create(initState, reducer)
       store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
     }
     yield store1
@@ -43,12 +41,18 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
           }
       }
     case Action.ReceiveSession(sessionId) =>
-      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> None
+      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> state.user.map { u =>
+        IO.pure {
+          Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
+        }
+      }
     case Action.Login(userName) =>
       state.copy(user = Some(Participant(userName, userName))) -> None
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) -> None
     case Action.SendPlanningSessionAction(psAction) =>
+      println(s"Reducer SendPlanningSessionAction($psAction)")
+      println(s"And state.session is ${state.session}")
       state -> state.session.map(_.id).map { sessionId =>
         WebSocketSupport.send(endpoints.session.ws(sessionId), psAction.asJson.noSpaces)
       }
@@ -96,4 +100,29 @@ object PlanningPokerApp {
   }
 
   case class Store(source: Observable[AppState], sink: Sink[Action])
+  object Store {
+    def create(initialState: AppState, reducer: (AppState, Action) => (AppState, Option[IO[Action]])): IO[Store] =
+    for {
+      handler <- Handler.create[Action]
+    }
+    yield {
+      def foldState(state: AppState, action: Action): IO[AppState] = {
+        val (newState, nextAction) = reducer(state, action)
+          nextAction match {
+            case Some(nextActionIO) =>
+              nextActionIO.flatMap { a =>
+                foldState(newState, a)
+              }
+            case None =>
+              IO.pure(newState)
+          }
+        }
+      val sink: Sink[Action] = handler
+      val source: Observable[AppState] = handler
+        .scanEval(IO pure initialState)(foldState)
+        .startWith(Seq(initialState))
+        .share
+      Store(source, sink)
+    }
+  }
 }

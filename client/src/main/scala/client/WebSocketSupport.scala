@@ -19,6 +19,7 @@ object WebSocketSupport {
   }
   def send(url: String, message: String): IO[Action] =
     getOrElseCreate(url).map { ws =>
+      println(s"Send $message")
       ws.ws.send(message)
       Action.Noop
     }
@@ -46,6 +47,7 @@ object WebSocketSupport {
             case (Some(s), None) =>
               close(s)
             case (None, Some(s)) =>
+              println(s"Subscribe $s")
               connect(s)
             case (Some(current), Some(updated)) =>
               if (current.url == updated.url) IO.pure(()) // the same subscrbtion -- do nothing

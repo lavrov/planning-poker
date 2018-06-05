@@ -26,20 +26,29 @@ object PlanningSessionView {
           }
         )
       },
-      ul(
-        planningSession.players.map { participant =>
-          val name = participant.name
-          val status =
-            planningSession.estimates.participantEstimates.get(participant.id)
-              .map { card =>
-                if (allGaveEstimates)
-                  CardsView.cardSign(card)
-                else
-                  "+"
-              }
-              .getOrElse("-")
-          li(name, " ", status)
-        }
+      div(
+        "Players",
+        ul(
+          planningSession.players.map { participant =>
+            val name = participant.name
+            val status =
+              planningSession.estimates.participantEstimates.get(participant.id)
+                .map { card =>
+                  if (allGaveEstimates)
+                    CardsView.cardSign(card)
+                  else
+                    "+"
+                }
+                .getOrElse("-")
+            li(name, " ", status)
+          }
+        ),
+        "Observers",
+        ul(
+          for (u <- planningSession.observers)
+          yield
+            li(u.name)
+        )
       )
     )
   }
