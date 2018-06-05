@@ -43,7 +43,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     case Action.ReceiveSession(sessionId) =>
       state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> state.user.map { u =>
         IO.pure {
-          Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
+          Action.SendPlanningSessionAction(PlanningSession.Action.AddObserver(u))
         }
       }
     case Action.Login(userName) =>
@@ -106,20 +106,22 @@ object PlanningPokerApp {
       handler <- Handler.create[Action]
     }
     yield {
-      def foldState(state: AppState, action: Action): IO[AppState] = {
+      def foldState(state: AppState, action: Action): Observable[AppState] = {
         val (newState, nextAction) = reducer(state, action)
           nextAction match {
             case Some(nextActionIO) =>
-              nextActionIO.flatMap { a =>
-                foldState(newState, a)
-              }
+              Observable(newState) ++
+              Observable.fromIO(nextActionIO)
+                .flatMap { a =>
+                  foldState(newState, a)
+                }
             case None =>
-              IO.pure(newState)
+              Observable(newState)
           }
         }
       val sink: Sink[Action] = handler
       val source: Observable[AppState] = handler
-        .scanEval(IO pure initialState)(foldState)
+        .flatScan(initialState)(foldState)
         .startWith(Seq(initialState))
         .share
       Store(source, sink)

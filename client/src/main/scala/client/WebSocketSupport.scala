@@ -23,9 +23,11 @@ object WebSocketSupport {
     }
   }
   def send(url: String, message: String): IO[Action] =
-    getOrElseCreate(url).map { ws =>
-      println(s"Send $message")
-      ws.ws.send(message)
+    for {
+      ws <- getOrElseCreate(url)
+    }
+    yield {
+      ws.sink.unsafeOnNext(message)
       Action.Noop
     }
 
@@ -41,7 +43,9 @@ object WebSocketSupport {
 
         def connect(sub: Sub.WebSocket): IO[Unit] = for {
           ws <- getOrElseCreate(sub.url)
-          _ <- store.sink <-- ws.source.map { m => sub.actionFn(m.data.toString) }
+          _ <- store.sink <-- ws.source.map { m =>
+            sub.actionFn(m.data.toString)
+          }
         }
           yield
             currentSub = Some(sub)
@@ -52,7 +56,6 @@ object WebSocketSupport {
             case (Some(s), None) =>
               close(s)
             case (None, Some(s)) =>
-              println(s"Subscribe $s")
               connect(s)
             case (Some(current), Some(updated)) =>
               if (current.url == updated.url) IO.pure(()) // the same subscrbtion -- do nothing
@@ -65,22 +68,25 @@ object WebSocketSupport {
   }
 }
 
-object WebSocket {
-  implicit def toSink(socket: WebSocket): Sink[String] = socket.sink
-  implicit def toSource(socket: WebSocket): Observable[MessageEvent] = socket.source
-}
-
-final case class WebSocket private(url: String) {
+final case class WebSocket(url: String) {
   val ws = new org.scalajs.dom.WebSocket(url)
 
-  lazy val source = Observable.create[MessageEvent](Unbounded)(observer => {
-    ws.onmessage = (e: MessageEvent) => observer.onNext(e)
-    ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
-    ws.onclose = (e: CloseEvent) => observer.onComplete()
-    Cancelable(() => ws.close())
-  })
+  val source = {
+    var buffer = List.empty[MessageEvent]
+    ws.onmessage = { (e: MessageEvent) =>
+      buffer = e :: buffer
+    }
+    Observable.create[MessageEvent](Unbounded)(observer => {
+      observer.onNextAll(buffer.reverse)
+      buffer = null
+      ws.onmessage = (e: MessageEvent) => observer.onNext(e)
+      ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
+      ws.onclose = (e: CloseEvent) => observer.onComplete()
+      Cancelable( () => ws.close() )
+    })
+  }
 
-  lazy val sink = {
+  val sink = {
     var buffer = List.empty[String]
     val result =
       Sink.create[String](
@@ -95,7 +101,7 @@ final case class WebSocket private(url: String) {
         () => IO(ws.close())
       )
     ws.onopen = { _ =>
-      (result <-- Observable.fromIterable(buffer.reverse)).unsafeRunSync()
+      buffer.reverse.foreach(result.unsafeOnNext)
       buffer = null
     }
     result
