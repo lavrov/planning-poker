@@ -15,6 +15,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     for {
       store0 <- Store.create(initState, reducer)
       store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
+      _ <- store1.sink <-- Router.create()
     }
     yield store1
 
@@ -47,7 +48,10 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         }
       }
     case Action.Login(userName) =>
-      state.copy(user = Some(Participant(userName, userName))) -> None
+      val u = Participant(userName, userName)
+      state.copy(user = Some(u)) -> state.session.map { _ =>
+        IO(Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u)))
+      }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) -> None
     case Action.SendPlanningSessionAction(psAction) =>

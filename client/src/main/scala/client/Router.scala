@@ -22,7 +22,9 @@ object Router {
   val routes: HashString => Action = {
     val Session = """#/session/(.+)""".r
     ({
-      case Session(id) => Action.ReceiveSession(id)
+      case Session(id) =>
+        println("Routed to id")
+        Action.ReceiveSession(id)
       case _ => Action.Noop
     })
   }

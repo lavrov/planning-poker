@@ -17,7 +17,7 @@ object Main {
     val run =
       for {
         store <- app.createStore
-        root = div(child <-- store.source.map(AppView.render(_, store.sink)))
+        root = div(child <-- store.source.map(AppView.render(_, store.sink, endpoints)))
         _ <- OutWatch.renderInto("#app", root)
       } yield ()
 
