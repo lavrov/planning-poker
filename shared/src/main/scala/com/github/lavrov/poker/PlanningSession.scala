@@ -2,8 +2,8 @@ package com.github.lavrov.poker
 
 
  case class PlanningSession(
-    observers: List[Participant],
-    players: List[Participant],
+    observers: Set[Participant],
+    players: Set[Participant],
     estimates: Estimates
 )
 
@@ -40,13 +40,13 @@ object PlanningSession {
   def update(model: PlanningSession, action: Action): PlanningSession = action match {
     case AddObserver(participant) =>
       model.copy(
-        observers = participant :: model.observers,
-        players = model.players.filter(_ != participant)
+        observers = model.observers + participant,
+        players = model.players - participant
       )
     case AddPlayer(participant) =>
       model.copy(
-        observers = model.observers.filter(_ != participant),
-        players = participant :: model.players,
+        observers = model.observers - participant,
+        players = model.players + participant
       )
     case RegisterEstimate(participantId, card) =>
       if (model.players.exists(_.id == participantId))

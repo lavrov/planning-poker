@@ -14,32 +14,45 @@ object PlanningSessionView {
         .map(_.id)
         .forall(planningSession.estimates.participantEstimates.contains)
     def isPlayer = planningSession.players.contains(user)
-    def sessionJoinSink(user: Participant): Option[Sink[Unit]] = {
-      if (!isPlayer) Some {
-        sink.redirectMap(_ =>
-          PlanningPokerApp.Action.SendPlanningSessionAction(
-            PlanningSession.Action.AddPlayer(user)))
-      }
-      else None
-    }
+    def becomePlayer =
+        PlanningPokerApp.Action.SendPlanningSessionAction(
+          PlanningSession.Action.AddPlayer(user))
+    def becomeObserver =
+      PlanningPokerApp.Action.SendPlanningSessionAction(
+        PlanningSession.Action.AddObserver(user))
     div(
       h1(planningSession.estimates.userStory.description),
       hr(),
       div(
-        sessionJoinSink(user).map( joinSink =>
-          button(className := "btn btn-sm btn-primary", "Join", onClick(()) --> joinSink)),
-        CardsView.render(
-          planningSession.estimates.participantEstimates.get(user.id),
-          sink.redirectMap { card =>
-            PlanningPokerApp.Action.SendPlanningSessionAction(
-              PlanningSession.Action.RegisterEstimate(user.id, card))
-          }
-        )
+        div(
+          className := "btn-group btn-group-toggle",
+          role := "group",
+          button(
+            classNames := "btn" :: (if (isPlayer) List("btn-primary", "active") else List("btn-secondary")),
+            "Player",
+            onClick(becomePlayer) --> sink
+          ),
+          button(
+            classNames := "btn" :: (if (!isPlayer) List("btn-primary", "active") else List("btn-secondary")),
+            "Observer",
+            onClick(becomeObserver) --> sink
+          )
+        ),
+        if (isPlayer)
+          Some(
+            CardsView.render(
+              planningSession.estimates.participantEstimates.get(user.id),
+              sink.redirectMap { card =>
+                PlanningPokerApp.Action.SendPlanningSessionAction(
+                  PlanningSession.Action.RegisterEstimate(user.id, card))
+              }))
+        else
+          None
       ),
       div(
         "Players",
         ul(
-          planningSession.players.map { participant =>
+          planningSession.players.toList.map { participant =>
             val name = participant.name
             val status =
               planningSession.estimates.participantEstimates.get(participant.id)
@@ -55,7 +68,7 @@ object PlanningSessionView {
         ),
         "Observers",
         ul(
-          for (u <- planningSession.observers)
+          for (u <- planningSession.observers.toList)
           yield
             li(u.name)
         )
