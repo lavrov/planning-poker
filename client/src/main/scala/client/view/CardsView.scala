@@ -19,23 +19,25 @@ object CardsView {
 
   def render(selected: Option[Card], onSelect: Sink[Option[Card]]): VNode =
     div(
+      className := "btn-group btn-group-toggle",
+      role := "group",
       configuration.map(card =>
         renderCard(
           card,
           selected.contains(card),
           onSelect
         )
-      ),
-      button("clear", onClick(None) --> onSelect)
+      )
     )
 
-  private def renderCard(card: Card, selected: Boolean, onSelect: Sink[Option[Card]]) = {
+  private def renderCard(card: Card, selected: Boolean, onSelect1: Sink[Option[Card]]) = {
     val text = cardSign(card)
-    val cls = if (selected) Some("selected") else None
+    val cls = List("btn")
+    val btnClass = if (selected) "btn-primary" else "btn-secondary"
     button(
-      if (selected) strong(text) else text,
-      classNames := cls ++ Seq("btn", "btn-sm"),
-      onClick(if (selected) None else Some(card)) --> onSelect
+      classNames := btnClass :: cls,
+      text,
+      onClick(if (selected) None else Some(card)) --> onSelect1
     )
   }
 

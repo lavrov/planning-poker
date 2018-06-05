@@ -43,7 +43,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     case Action.ReceiveSession(sessionId) =>
       state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> state.user.map { u =>
         IO.pure {
-          Action.SendPlanningSessionAction(PlanningSession.Action.AddObserver(u))
+          Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
         }
       }
     case Action.Login(userName) =>
