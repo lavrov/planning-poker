@@ -44,23 +44,17 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
           }
       }
     case Action.ReceiveSession(sessionId) =>
-      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> state.user.map { u =>
-        IO.pure {
-          Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
-        }
-      }
+      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> None
     case Action.Login(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
-      state.copy(user = Some(u)) -> Some {
-        IO {
-          LocalStorage.persist(u)
-          state.session.fold(Noop: Action)( _ =>
-            Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u)))
-        }
-      }
+      state.copy(user = Some(u)) -> None
     case Action.UpdatePlanningSession(session) =>
-      state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) -> None
+      state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
+      state.user.collect {
+        case u if !session.observers.union(session.players).contains(u) =>
+          IO pure Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
+      }
     case Action.SendPlanningSessionAction(psAction) =>
       println(s"Reducer SendPlanningSessionAction($psAction)")
       println(s"And state.session is ${state.session}")
