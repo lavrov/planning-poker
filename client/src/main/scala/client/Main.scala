@@ -1,6 +1,5 @@
 package client
 
-import client.PlanningPokerApp.AppState
 import client.view.AppView
 import monix.execution.Scheduler.Implicits.global
 import outwatch.dom.OutWatch
@@ -10,7 +9,7 @@ object Main {
   def main(args: Array[String]): Unit = {
     BootstrapCSS
     CSSLoader
-    val initState = AppState(None, None)
+    val initState = LocalStorage.initialState
     val endpoints = new Endpoints("localhost:8080")
     val app = new PlanningPokerApp(endpoints, initState)
 

@@ -1,12 +1,14 @@
 package client
 
 import cats.effect.IO
+import client.PlanningPokerApp.Action.Noop
 import com.github.lavrov.poker._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import outwatch.{Handler, Sink}
 import outwatch.http.Http
-import io.circe.syntax._, io.circe.generic.auto._
+import io.circe.syntax._
+import io.circe.generic.auto._
 
 class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppState) {
   import PlanningPokerApp._
@@ -49,8 +51,12 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       }
     case Action.Login(userName) =>
       val u = Participant(userName, userName)
-      state.copy(user = Some(u)) -> state.session.map { _ =>
-        IO(Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u)))
+      state.copy(user = Some(u)) -> Some {
+        IO {
+          LocalStorage.persist(u)
+          state.session.fold(Noop: Action)( _ =>
+            Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u)))
+        }
       }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) -> None
