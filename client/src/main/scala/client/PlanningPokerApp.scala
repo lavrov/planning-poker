@@ -50,7 +50,8 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         }
       }
     case Action.Login(userName) =>
-      val u = Participant(userName, userName)
+      val id = java.util.UUID.randomUUID().toString
+      val u = Participant(id, userName)
       state.copy(user = Some(u)) -> Some {
         IO {
           LocalStorage.persist(u)
