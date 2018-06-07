@@ -72,14 +72,14 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
       state.user.collect {
-        case u if !session.observers.union(session.players).contains(u) =>
+        case u if !session.participants.keySet(u.id) =>
           IO pure Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
       }
     case Action.SendPlanningSessionAction(psAction) =>
       println(s"Reducer SendPlanningSessionAction($psAction)")
       println(s"And state.session is ${state.session}")
-      state -> state.session.map(_.id).map { sessionId =>
-        WebSocketSupport.send(endpoints.session.ws(sessionId), psAction.asJson.noSpaces)
+      state -> state.session.map(_.id).zip(state.user).headOption.map { case (sessionId, user) =>
+        WebSocketSupport.send(endpoints.session.ws(sessionId, user.id), psAction.asJson.noSpaces)
       }
     case Action.Noop =>
       state -> None
@@ -87,13 +87,13 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 
   def subscriptions(state: AppState): Option[Sub.WebSocket] = {
     import io.circe.parser.decode, io.circe.generic.auto._
-    state.session.map(s =>
+    state.session.zip(state.user).headOption.map { case (s, u) =>
       Sub.WebSocket(
-        endpoints.session.ws(s.id),
+        endpoints.session.ws(s.id, u.id),
         msg =>
           Action.UpdatePlanningSession(decode[PlanningSession](msg).right.get)
       )
-    )
+    }
   }
 }
 

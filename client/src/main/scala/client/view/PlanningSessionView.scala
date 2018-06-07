@@ -10,11 +10,11 @@ import monix.execution.Scheduler.Implicits.global
 
 object PlanningSessionView {
   def render(planningSession: PlanningSession, user: Participant, sink: Sink[Action]): VNode = {
+    val (players, observers) = planningSession.participants.values.toList.partition(p => planningSession.players(p.id))
     val allGaveEstimates =
       planningSession.players
-        .map(_.id)
         .forall(planningSession.estimates.participantEstimates.contains)
-    def isPlayer = planningSession.players.contains(user)
+    def isPlayer = planningSession.players.contains(user.id)
     def becomePlayer = sink.redirectMap[Unit](_ =>
         PlanningPokerApp.Action.SendPlanningSessionAction(
           PlanningSession.Action.AddPlayer(user)))
@@ -47,24 +47,24 @@ object PlanningSessionView {
           div(className := "card my-3 box-shadow",
             div(className := "card-header", "Players"),
             ul(className := "list-group list-group-flush",
-              planningSession.players.toList.map { participant =>
-                val name = participant.name
-                val status =
-                  planningSession.estimates.participantEstimates.get(participant.id)
-                    .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
-                li(className := "list-group-item d-flex justify-content-between align-items-center",
-                  name,
-                  for (st <- status) yield
-                    span(className := "badge badge-primary badge-pill", st)
-                )
+              players.map { participant =>
+                  val name = participant.name
+                  val status =
+                    planningSession.estimates.participantEstimates.get(participant.id)
+                      .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
+                  li(className := "list-group-item d-flex justify-content-between align-items-center",
+                    name,
+                    for (st <- status) yield
+                      span(className := "badge badge-primary badge-pill", st)
+                  )
               }
             )
           ),
-          if (planningSession.observers.nonEmpty)
+          if (observers.nonEmpty)
             div(className := "card my-3 box-shadow",
               div(className := "card-header", "Observers"),
               ul(className := "list-group list-group-flush",
-                for (u <- planningSession.observers.toList)
+                for (u <- observers)
                 yield
                   li(className := "list-group-item d-flex justify-content-between align-items-center",
                     u.name

@@ -43,7 +43,7 @@ class Routes(
             (sessionManager ? SessionManager.Create()).mapTo[String]
           )
         } ~
-        path(Segment / "ws") { sessionId =>
+        path(Segment / "ws" / Segment) { case (sessionId, userId) =>
           extractUpgradeToWebSocket { upgrade =>
             val response =
               (sessionManager ? SessionManager.Get(sessionId))
@@ -55,21 +55,21 @@ class Routes(
                         .actorRef[PlanningSession](100, OverflowStrategy.dropNew)
                         .map(m => TextMessage.Strict(m.asJson.noSpaces))
                         .preMaterialize()
-                    sessionActorRef ! SessionActor.Subscribe(ref)
+                    sessionActorRef ! SessionActor.Subscribe(userId, ref)
                     val sink = Sink
-                      .actorRef[SessionActor.SessionAction](sessionActorRef, ()).
-                      contramap[Message] {
-                      case TextMessage.Strict(tm) =>
-                        decode[PlanningSession.Action](tm) match {
-                          case Right(action) =>
-                            SessionActor.SessionAction(action)
-                          case Left(error) =>
-                            log.error(error, error.getMessage)
-                            throw error
-                        }
-                      case _ =>
-                        throw new Exception("Unsupported input message")
-                    }
+                      .actorRef[SessionActor.SessionAction](sessionActorRef, ())
+                      .contramap[Message] {
+                        case TextMessage.Strict(tm) =>
+                          decode[PlanningSession.Action](tm) match {
+                            case Right(action) =>
+                              SessionActor.SessionAction(action)
+                            case Left(error) =>
+                              log.error(error, error.getMessage)
+                              throw error
+                          }
+                        case _ =>
+                          throw new Exception("Unsupported input message")
+                      }
                     upgrade.handleMessages(Flow.fromSinkAndSource(sink, source))
                   case None =>
                     HttpResponse(StatusCodes.NotFound)

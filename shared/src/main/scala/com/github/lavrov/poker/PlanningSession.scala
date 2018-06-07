@@ -2,8 +2,8 @@ package com.github.lavrov.poker
 
 
  case class PlanningSession(
-    observers: Set[Participant],
-    players: Set[Participant],
+    participants: Map[String, Participant],
+    players: Set[String],
     estimates: Estimates
 )
 
@@ -33,6 +33,7 @@ object PlanningSession {
   object Action {
     case class AddObserver(participant: Participant) extends Action
     case class AddPlayer(participant: Participant) extends Action
+    case class RemoveParticipant(id: String) extends Action
     case class RegisterEstimate(participantId: String, card: Option[Card]) extends Action
     case object ClearEstimates extends Action
     case class SetStoryText(text: String) extends Action
@@ -42,16 +43,20 @@ object PlanningSession {
   def update(model: PlanningSession, action: Action): PlanningSession = action match {
     case AddObserver(participant) =>
       model.copy(
-        observers = model.observers + participant,
-        players = model.players - participant
+        participants = model.participants + (participant.id ->participant),
+        players = model.players - participant.id
       )
     case AddPlayer(participant) =>
       model.copy(
-        observers = model.observers - participant,
-        players = model.players + participant
+        participants = model.participants + (participant.id ->participant),
+        players = model.players + participant.id
+      )
+    case RemoveParticipant(id) =>
+      model.copy(
+        participants = model.participants - id
       )
     case RegisterEstimate(participantId, card) =>
-      if (model.players.exists(_.id == participantId))
+      if (model.players.contains(participantId))
         model.copy(
           estimates = model.estimates.copy(
             participantEstimates =
