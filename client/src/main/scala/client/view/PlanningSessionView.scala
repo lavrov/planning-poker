@@ -14,30 +14,15 @@ object PlanningSessionView {
         .map(_.id)
         .forall(planningSession.estimates.participantEstimates.contains)
     def isPlayer = planningSession.players.contains(user)
-    def becomePlayer =
+    def becomePlayer = sink.redirectMap[Unit](_ =>
         PlanningPokerApp.Action.SendPlanningSessionAction(
-          PlanningSession.Action.AddPlayer(user))
-    def becomeObserver =
+          PlanningSession.Action.AddPlayer(user)))
+    def becomeObserver = sink.redirectMap[Unit](_ =>
       PlanningPokerApp.Action.SendPlanningSessionAction(
-        PlanningSession.Action.AddObserver(user))
+        PlanningSession.Action.AddObserver(user)))
     div(
-      form(className := "form-group",
-        input(`type` := "text", `class` := "form-control form-control-lg", placeholder := "Enter story description")),
+      header(isPlayer, becomePlayer, becomeObserver),
       div(
-        div(
-          className := "btn-group btn-group-toggle",
-          role := "group",
-          button(
-            classNames := "btn" :: (if (isPlayer) List("btn-primary", "active") else List("btn-secondary")),
-            "Player",
-            onClick(becomePlayer) --> sink
-          ),
-          button(
-            classNames := "btn" :: (if (!isPlayer) List("btn-primary", "active") else List("btn-secondary")),
-            "Observer",
-            onClick(becomeObserver) --> sink
-          )
-        ),
         if (isPlayer)
           Some(
             CardsView.render(
@@ -71,6 +56,22 @@ object PlanningSessionView {
           for (u <- planningSession.observers.toList)
           yield
             li(u.name)
+        )
+      )
+    )
+  }
+
+  private def header(isPlayer: Boolean, becomePlayer: Sink[Unit], becomeObserver: Sink[Unit]): VNode = {
+    val isObserver = !isPlayer
+    def btnClasses(isActive: Boolean) =
+      "btn btn-sm" :: List(if (isActive) "btn-secondary" else "btn-outline-secondary")
+    div(`class` :="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
+      form(className := "form-inline",
+        input(`type` := "text", `class` := "form-control form-control-lg border-0", placeholder := "Enter story description")),
+      div(`class` := "btn-toolbar mb-2 mb-md-0",
+        div(`class` := "btn-group mr-2",
+          button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
+          button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
         )
       )
     )
