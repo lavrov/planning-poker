@@ -1,6 +1,6 @@
 package client.view
 
-import client.{Endpoints, PlanningPokerApp, Routing}
+import client.{Endpoints, Page, PlanningPokerApp, Routing}
 import client.PlanningPokerApp.{Action, AppState}
 import outwatch.Sink
 import outwatch.dom.VNode
@@ -13,11 +13,11 @@ object AppView {
       HeaderView.render(state.user.map(_.name)),
       tag("main")(className := "container",
         state.page match {
-          case Routing.Home =>
+          case Page.Home =>
               p("Welcome to Planning Poker")
-          case Routing.SignIn(_) =>
-            SignInView.render(sink.redirectMap(PlanningPokerApp.Action.Login))
-          case Routing.Session(_, _) =>
+          case Page.SignIn(_) =>
+            SignInView.render(sink.redirectMap(PlanningPokerApp.Action.SignIn))
+          case Page.Session(_, _) =>
             state.session.zip(state.user).headOption match {
               case Some((session, user)) =>
                 session.planningSession match {
@@ -29,10 +29,10 @@ object AppView {
               case None =>
                 div("invalid state")
             }
-          case Routing.Sessions(_) =>
+          case Page.Sessions(_) =>
             state.session match {
               case Some(session) =>
-                a(className := "btn btn-primary", href := Routing.hashPath(Routing.Session(session.id)),
+                a(className := "btn btn-primary", href := Routing.hashPath(Page.Session(session.id)),
                   "Open active session")
               case _ =>
                 div(className := "text-center",

@@ -23,9 +23,9 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
   def reducer(state: AppState, action: Action): (AppState, Option[IO[Action]]) = action match {
     case Action.ChangePage(page) =>
       page match {
-        case _: Routing.SignedInUser if state.user.isEmpty =>
-          state.copy(redirectOnSignIn = Some(page)) -> Some(Routing.navigate(Routing.SignIn()))
-        case Routing.Session(id, _) if !state.session.exists(_.id == id) =>
+        case _: Page.SignedInUser if state.user.isEmpty =>
+          state.copy(redirectOnSignIn = Some(page)) -> Some(Routing.navigate(Page.SignIn()))
+        case Page.Session(id, _) if !state.session.exists(_.id == id) =>
           state.copy(page = page, session = Some(CurrentPlanningSession(id, None))) -> None
         case _ =>
           state.copy(page = page) -> None
@@ -53,17 +53,21 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       }
     case Action.ReceiveSession(sessionId) =>
       state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> Some {
-        Routing.navigate(Routing.Session(sessionId)).map(_ => Action.Noop)
+        Routing.navigate(Page.Session(sessionId)).map(_ => Action.Noop)
       }
-    case Action.Login(userName) =>
+    case Action.SignIn(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
       state.copy(user = Some(u), redirectOnSignIn = None) -> Some {
         for {
           _ <- LocalStorage.persist(u)
-          _ <- Routing.navigate(state.redirectOnSignIn getOrElse Routing.Sessions())
+          _ <- Routing.navigate(state.redirectOnSignIn getOrElse Page.Sessions())
         }
         yield Action.Noop
+      }
+    case Action.SignOut =>
+      state.copy(user = None) -> Some {
+        Routing.navigate(Page.Home)
       }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
@@ -96,10 +100,10 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 object PlanningPokerApp {
 
   case class AppState(
-      page: Routing.Page,
+      page: Page,
       user: Option[Participant],
       session: Option[CurrentPlanningSession] = None,
-      redirectOnSignIn: Option[Routing.Page] = None
+      redirectOnSignIn: Option[Page] = None
   )
 
   case class CurrentPlanningSession(
@@ -109,12 +113,13 @@ object PlanningPokerApp {
 
   sealed trait Action
   object Action {
-    case class Login(name: String) extends Action
+    case class SignIn(name: String) extends Action
+    case object SignOut extends Action
     case class RequestSession() extends Action
     case class ReceiveSession(sessionId: String) extends Action
     case class SendPlanningSessionAction(action: PlanningSession.Action) extends Action
     case class UpdatePlanningSession(session: PlanningSession) extends Action
-    case class ChangePage(page: Routing.Page) extends Action
+    case class ChangePage(page: Page) extends Action
     case object Noop extends Action
   }
 

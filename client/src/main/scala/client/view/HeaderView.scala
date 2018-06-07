@@ -1,6 +1,6 @@
 package client.view
 
-import client.Routing
+import client.{Page, Routing}
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
 
@@ -11,9 +11,11 @@ object HeaderView {
         h5(className := "my-0 mr-md-auto font-weight-normal", "Planning Poker"),
         user match {
           case Some(u) =>
-            div(u)
+            div(
+              a(className := "btn btn-outline-secondary", "Sign out", href := Routing.hashPath(Page.SignIn()))
+            )
           case _ =>
-            a(className := "btn btn-outline-primary", "Sign in", href := Routing.hashPath(Routing.SignIn()))
+            a(className := "btn btn-outline-primary", "Sign in", href := Routing.hashPath(Page.SignIn()))
         }
       )
     )

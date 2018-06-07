@@ -10,33 +10,25 @@ import com.github.werk.router4s.Router
 import monix.reactive.Observable
 
 object Routing {
-  type HashString = String
 
-  sealed trait Page
-  sealed trait SignedInUser
-  case object Home extends Page
-  case class SignIn(parent: Home.type = Home) extends Page
-  case class Sessions(parent: Home.type = Home) extends Page
-  case class Session(id: String, parent : Sessions = Sessions()) extends Page with SignedInUser
+  private val paths = {
+    val path = new Router[Page]
+    val str = Router.Node[String](Some(_), Some(_), "str")
 
-  val path = new Router[Page]
-
-  val str = Router.Node[String](Some(_), Some(_), "str")
-
-  val paths =
-    path(Home,
-      path("signin", SignIn),
-      path("sessions", Sessions,
-        path(str, Session)
+    path(Page.Home,
+      path("signin", Page.SignIn),
+      path("sessions", Page.Sessions,
+        path(str, Page.Session)
       )
     )
+  }
 
   def enhance(store: Store): IO[Store]  = IO {
     val locationChanges =
       events.window.onHashChange
         .map(_ => window.location.hash)
         .startWith(window.location.hash :: Nil)
-        .map(parse(_).map(ChangePage).getOrElse(ChangePage(Home)))
+        .map(parse(_).map(ChangePage).getOrElse(ChangePage(Page.Home)))
     store.copy(sink = store.sink.redirect[Action](original => Observable.merge(original, locationChanges)))
   }
 
@@ -53,4 +45,14 @@ object Routing {
     window.location.hash = hashPath(page)
     Action.Noop
   }
+}
+
+sealed trait Page
+object Page {
+  sealed trait SignedInUser
+
+  case object Home extends Page
+  case class SignIn(parent: Home.type = Home) extends Page
+  case class Sessions(parent: Home.type = Home) extends Page
+  case class Session(id: String, parent: Sessions = Sessions()) extends Page with SignedInUser
 }
