@@ -4,7 +4,7 @@ html {
   position: relative;
   min-height: 100%;
 }
-body {
+body#app {
   margin-bottom: 60px; /* Margin bottom by footer height */
 }
 .footer {

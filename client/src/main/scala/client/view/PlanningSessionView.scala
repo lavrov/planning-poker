@@ -36,9 +36,9 @@ object PlanningSessionView {
       ),
       div(className := "row",
         div(className := "col-sm",
-          div(className := "card border-0",
-            div(className := "card-body px-0",
-              h4(className := "card-title", "Players"),
+          div(className := "card my-3 box-shadow",
+            div(className := "card-body",
+              h6(className := "card-title", "Players"),
               ul(className := "list-group list-group-flush",
                 planningSession.players.toList.map { participant =>
                   val name = participant.name
@@ -55,9 +55,9 @@ object PlanningSessionView {
             )
           ),
           if (planningSession.observers.nonEmpty)
-            div(className := "card border-0",
-              div(className := "card-body px-0",
-                h4(className := "card-title", "Observers"),
+            div(className := "card my-3 box-shadow",
+              div(className := "card-body",
+                h6(className := "card-title", "Observers"),
                 ul(className := "list-group list-group-flush",
                   for (u <- planningSession.observers.toList)
                   yield
@@ -71,9 +71,9 @@ object PlanningSessionView {
             div()
         ),
         div(className := "col-sm",
-          div(className := "card border-0",
-            div(className := "card-body px-0",
-              h4(className := "card-title", "Stats")
+          div(className := "card my-3 box-shadow",
+            div(className := "card-body",
+              h6(className := "card-title", "Stats")
             )
           )
         )

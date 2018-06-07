@@ -43,7 +43,8 @@ object AppView {
           case _ =>
             div("invalid route")
         }
-      )
+      ),
+      FooterView.render()
     )
   }
 }
