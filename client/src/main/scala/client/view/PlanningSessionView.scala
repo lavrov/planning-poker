@@ -12,8 +12,7 @@ object PlanningSessionView {
   def render(planningSession: PlanningSession, user: Participant, sink: Sink[Action]): VNode = {
     val (players, observers) = planningSession.participants.values.toList.partition(p => planningSession.players(p.id))
     val allGaveEstimates =
-      planningSession.players
-        .forall(planningSession.estimates.participantEstimates.contains)
+      players.forall(p => planningSession.estimates.participantEstimates.contains(p.id))
     def isPlayer = planningSession.players.contains(user.id)
     def becomePlayer = sink.redirectMap[Unit](_ =>
         PlanningPokerApp.Action.SendPlanningSessionAction(

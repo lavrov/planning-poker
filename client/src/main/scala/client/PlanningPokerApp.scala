@@ -66,7 +66,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         yield Action.Noop
       }
     case Action.SignOut =>
-      state.copy(user = None) -> Some {
+      state.copy(user = None, session = None) -> Some {
         Routing.navigate(Page.Home)
       }
     case Action.UpdatePlanningSession(session) =>
