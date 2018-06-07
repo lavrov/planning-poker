@@ -16,10 +16,7 @@ class SessionActor extends Actor with ActorLogging {
   var planningSession: PlanningSession = PlanningSession(
     Set.empty,
     Set.empty,
-    Estimates(
-      UserStory("story description here"),
-      Map.empty
-    )
+    Estimates()
   )
 
   def receive: Receive = {

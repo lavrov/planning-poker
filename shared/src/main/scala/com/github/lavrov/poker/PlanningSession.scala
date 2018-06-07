@@ -17,8 +17,8 @@ case class UserStory(
 )
 
 case class Estimates(
-    userStory: UserStory,
-    participantEstimates: Map[String, Card]
+    storyText: String = "",
+    participantEstimates: Map[String, Card] = Map.empty
 )
 
 sealed trait Card
@@ -34,6 +34,8 @@ object PlanningSession {
     case class AddObserver(participant: Participant) extends Action
     case class AddPlayer(participant: Participant) extends Action
     case class RegisterEstimate(participantId: String, card: Option[Card]) extends Action
+    case object ClearEstimates extends Action
+    case class SetStoryText(text: String) extends Action
   }
   import Action._
 
@@ -61,5 +63,9 @@ object PlanningSession {
               }))
       else
         model
+    case ClearEstimates =>
+      model.copy(estimates = Estimates())
+    case SetStoryText(text) =>
+      model.copy(estimates = model.estimates.copy(storyText = text))
   }
 }
