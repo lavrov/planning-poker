@@ -34,28 +34,48 @@ object PlanningSessionView {
         else
           None
       ),
-      div(
-        "Players",
-        ul(
-          planningSession.players.toList.map { participant =>
-            val name = participant.name
-            val status =
-              planningSession.estimates.participantEstimates.get(participant.id)
-                .map { card =>
-                  if (allGaveEstimates)
-                    CardsView.cardSign(card)
-                  else
-                    "+"
+      div(className := "row",
+        div(className := "col-sm",
+          div(className := "card border-0",
+            div(className := "card-body px-0",
+              h4(className := "card-title", "Players"),
+              ul(className := "list-group list-group-flush",
+                planningSession.players.toList.map { participant =>
+                  val name = participant.name
+                  val status =
+                    planningSession.estimates.participantEstimates.get(participant.id)
+                      .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
+                  li(className := "list-group-item d-flex justify-content-between align-items-center",
+                    name,
+                    for (st <- status) yield
+                      span(className := "badge badge-primary badge-pill", st)
+                  )
                 }
-                .getOrElse("-")
-            li(name, " ", status)
-          }
+              )
+            )
+          ),
+          if (planningSession.observers.nonEmpty)
+            div(className := "card border-0",
+              div(className := "card-body px-0",
+                h4(className := "card-title", "Observers"),
+                ul(className := "list-group list-group-flush",
+                  for (u <- planningSession.observers.toList)
+                  yield
+                    li(className := "list-group-item d-flex justify-content-between align-items-center",
+                      u.name
+                    )
+                )
+              )
+            )
+          else
+            div()
         ),
-        "Observers",
-        ul(
-          for (u <- planningSession.observers.toList)
-          yield
-            li(u.name)
+        div(className := "col-sm",
+          div(className := "card border-0",
+            div(className := "card-body px-0",
+              h4(className := "card-title", "Stats")
+            )
+          )
         )
       )
     )

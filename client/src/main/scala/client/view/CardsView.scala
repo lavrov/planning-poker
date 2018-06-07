@@ -18,7 +18,7 @@ object CardsView {
   )
 
   def render(selected: Option[Card], onSelect: Sink[Option[Card]]): VNode =
-    div(
+    div(className := "my-3",
       className := "btn-group btn-group-toggle",
       role := "group",
       configuration.map(card =>
@@ -32,8 +32,8 @@ object CardsView {
 
   private def renderCard(card: Card, selected: Boolean, onSelect1: Sink[Option[Card]]) = {
     val text = cardSign(card)
-    val cls = List("btn")
-    val btnClass = if (selected) "btn-primary" else "btn-secondary"
+    val cls = List("btn", "btn-lg")
+    val btnClass = if (selected) "btn-primary" else "btn-outline-secondary"
     button(
       classNames := btnClass :: cls,
       text,

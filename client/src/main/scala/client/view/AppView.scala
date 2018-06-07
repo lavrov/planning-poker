@@ -34,10 +34,7 @@ object AppView {
               case Some((session, user)) =>
                 session.planningSession match {
                   case Some(planningSession) =>
-                    div(
-                      PlanningSessionView.render(planningSession, user, sink),
-                      a(href := Routing.hashPath(Routing.Session(session.id)), "Share")
-                    )
+                    PlanningSessionView.render(planningSession, user, sink)
                   case None =>
                     div("Connecting...")
                 }
