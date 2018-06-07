@@ -21,8 +21,8 @@ object PlanningSessionView {
       PlanningPokerApp.Action.SendPlanningSessionAction(
         PlanningSession.Action.AddObserver(user))
     div(
-      h1(planningSession.estimates.userStory.description),
-      hr(),
+      form(className := "form-group",
+        input(`type` := "text", `class` := "form-control form-control-lg", placeholder := "Enter story description")),
       div(
         div(
           className := "btn-group btn-group-toggle",
