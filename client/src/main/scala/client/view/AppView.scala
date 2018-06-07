@@ -10,7 +10,7 @@ object AppView {
 
   def render(state: AppState, sink: Sink[Action], endpoints: Endpoints): VNode = {
     div(
-      HeaderView.render(state.user.map(_.name)),
+      HeaderView.render(state.user.map(_.name), sink),
       tag("main")(className := "container",
         state.page match {
           case Page.Home =>
