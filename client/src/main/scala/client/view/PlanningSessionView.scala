@@ -37,34 +37,30 @@ object PlanningSessionView {
       div(className := "row",
         div(className := "col-sm",
           div(className := "card my-3 box-shadow",
-            div(className := "card-body",
-              h6(className := "card-title", "Players"),
-              ul(className := "list-group list-group-flush",
-                planningSession.players.toList.map { participant =>
-                  val name = participant.name
-                  val status =
-                    planningSession.estimates.participantEstimates.get(participant.id)
-                      .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
-                  li(className := "list-group-item d-flex justify-content-between align-items-center",
-                    name,
-                    for (st <- status) yield
-                      span(className := "badge badge-primary badge-pill", st)
-                  )
-                }
-              )
+            div(className := "card-header", "Players"),
+            ul(className := "list-group list-group-flush",
+              planningSession.players.toList.map { participant =>
+                val name = participant.name
+                val status =
+                  planningSession.estimates.participantEstimates.get(participant.id)
+                    .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
+                li(className := "list-group-item d-flex justify-content-between align-items-center",
+                  name,
+                  for (st <- status) yield
+                    span(className := "badge badge-primary badge-pill", st)
+                )
+              }
             )
           ),
           if (planningSession.observers.nonEmpty)
             div(className := "card my-3 box-shadow",
-              div(className := "card-body",
-                h6(className := "card-title", "Observers"),
-                ul(className := "list-group list-group-flush",
-                  for (u <- planningSession.observers.toList)
-                  yield
-                    li(className := "list-group-item d-flex justify-content-between align-items-center",
-                      u.name
-                    )
-                )
+              div(className := "card-header", "Observers"),
+              ul(className := "list-group list-group-flush",
+                for (u <- planningSession.observers.toList)
+                yield
+                  li(className := "list-group-item d-flex justify-content-between align-items-center",
+                    u.name
+                  )
               )
             )
           else
@@ -72,9 +68,7 @@ object PlanningSessionView {
         ),
         div(className := "col-sm",
           div(className := "card my-3 box-shadow",
-            div(className := "card-body",
-              h6(className := "card-title", "Stats")
-            )
+            div(className := "card-header", "Stats")
           )
         )
       )
@@ -88,7 +82,7 @@ object PlanningSessionView {
     div(`class` :="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
       form(className := "form-inline",
         input(`type` := "text", `class` := "form-control form-control-lg border-0", placeholder := "Enter story description")),
-      div(`class` := "btn-toolbar mb-2 mb-md-0",
+      div(`class` := "btn-toolbar my-2",
         div(`class` := "btn-group mr-2",
           button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
           button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
