@@ -22,15 +22,14 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 
   def reducer(state: AppState, action: Action): (AppState, Option[IO[Action]]) = action match {
     case Action.ChangePage(page) =>
-      println(s"Page change: $page")
-      state.copy(page = page) -> Some(
-        page match {
-          case Routing.Session(id, _) if !state.session.exists(_.id == id) =>
-            IO.pure(Action.ReceiveSession(id))
-          case _ =>
-            IO.pure(Action.Noop)
-        }
-      )
+      page match {
+        case _: Routing.SignedInUser if state.user.isEmpty =>
+          state.copy(redirectOnSignIn = Some(page)) -> Some(Routing.navigate(Routing.SignIn()))
+        case Routing.Session(id, _) if !state.session.exists(_.id == id) =>
+          state.copy(page = page, session = Some(CurrentPlanningSession(id, None))) -> None
+        case _ =>
+          state.copy(page = page) -> None
+      }
     case Action.RequestSession() =>
       state -> Some {
         val request = Http.Request(endpoints.session.create)
@@ -59,8 +58,12 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     case Action.Login(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
-      state.copy(user = Some(u)) -> Some {
-        Routing.navigate(Routing.Sessions()).map(_ => Action.Noop)
+      state.copy(user = Some(u), redirectOnSignIn = None) -> Some {
+        for {
+          _ <- LocalStorage.persist(u)
+          _ <- Routing.navigate(state.redirectOnSignIn getOrElse Routing.Sessions())
+        }
+        yield Action.Noop
       }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
@@ -95,7 +98,8 @@ object PlanningPokerApp {
   case class AppState(
       page: Routing.Page,
       user: Option[Participant],
-      session: Option[CurrentPlanningSession]
+      session: Option[CurrentPlanningSession] = None,
+      redirectOnSignIn: Option[Routing.Page] = None
   )
 
   case class CurrentPlanningSession(

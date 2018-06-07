@@ -13,9 +13,11 @@ object Routing {
   type HashString = String
 
   sealed trait Page
+  sealed trait SignedInUser
   case object Home extends Page
+  case class SignIn(parent: Home.type = Home) extends Page
   case class Sessions(parent: Home.type = Home) extends Page
-  case class Session(id: String, parent : Sessions = Sessions()) extends Page
+  case class Session(id: String, parent : Sessions = Sessions()) extends Page with SignedInUser
 
   val path = new Router[Page]
 
@@ -23,6 +25,7 @@ object Routing {
 
   val paths =
     path(Home,
+      path("signin", SignIn),
       path("sessions", Sessions,
         path(str, Session)
       )
@@ -46,7 +49,8 @@ object Routing {
 
   def hashPath(page: Page): String = "#" + paths.path(page)
 
-  def navigate(page: Page): IO[Unit]= IO {
+  def navigate(page: Page): IO[Action]= IO {
     window.location.hash = hashPath(page)
+    Action.Noop
   }
 }

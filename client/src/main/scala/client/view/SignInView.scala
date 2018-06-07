@@ -12,7 +12,6 @@ object SignInView {
     vNode <-
       form(
         classNames := Seq("form-signin", "text-center"),
-        h1(classNames := Seq("h3", "mb-3", "font-weight-normal"), "Please sign in"),
         label(className := "sr-only", `for` := "inputName", "Your name"),
         input(className := "form-control", `type` := "text", id := "inputName", placeholder := "Your name",
           required, autoFocus, minLength := 1,
