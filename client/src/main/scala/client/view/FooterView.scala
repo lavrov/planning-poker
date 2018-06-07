@@ -7,7 +7,7 @@ object FooterView {
   def render(): VNode =
     footer(`class` := "footer text-center",
       div(`class` := "container",
-        span(`class` := "text-muted", "by"),
+        span(`class` := "text-muted", "by "),
         a(href := "https://lunatech.com", "Lunatech")
       )
     )
