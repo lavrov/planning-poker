@@ -1,7 +1,6 @@
 package client
 
 import cats.effect.IO
-import client.PlanningPokerApp.Action.Noop
 import com.github.lavrov.poker._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
@@ -17,11 +16,21 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     for {
       store0 <- Store.create(initState, reducer)
       store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
-      _ <- store1.sink <-- Router.create()
+      store2 <- Routing.enhance(store1)
     }
-    yield store1
+    yield store2
 
   def reducer(state: AppState, action: Action): (AppState, Option[IO[Action]]) = action match {
+    case Action.ChangePage(page) =>
+      println(s"Page change: $page")
+      state.copy(page = page) -> Some(
+        page match {
+          case Routing.Session(id, _) if !state.session.exists(_.id == id) =>
+            IO.pure(Action.ReceiveSession(id))
+          case _ =>
+            IO.pure(Action.Noop)
+        }
+      )
     case Action.RequestSession() =>
       state -> Some {
         val request = Http.Request(endpoints.session.create)
@@ -44,11 +53,15 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
           }
       }
     case Action.ReceiveSession(sessionId) =>
-      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> None
+      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> Some {
+        Routing.navigate(Routing.Session(sessionId)).map(_ => Action.Noop)
+      }
     case Action.Login(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
-      state.copy(user = Some(u)) -> None
+      state.copy(user = Some(u)) -> Some {
+        Routing.navigate(Routing.Sessions()).map(_ => Action.Noop)
+      }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
       state.user.collect {
@@ -80,6 +93,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 object PlanningPokerApp {
 
   case class AppState(
+      page: Routing.Page,
       user: Option[Participant],
       session: Option[CurrentPlanningSession]
   )
@@ -96,6 +110,7 @@ object PlanningPokerApp {
     case class ReceiveSession(sessionId: String) extends Action
     case class SendPlanningSessionAction(action: PlanningSession.Action) extends Action
     case class UpdatePlanningSession(session: PlanningSession) extends Action
+    case class ChangePage(page: Routing.Page) extends Action
     case object Noop extends Action
   }
 

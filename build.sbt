@@ -38,8 +38,10 @@ lazy val client = project
   .dependsOn(sharedJs)
   .settings(
     scalaVersion := "2.12.4",
+    resolvers += Resolver.sonatypeRepo("snapshots"),
     libraryDependencies ++= Seq(
-      "io.github.outwatch" %%% "outwatch" % versions.outwatch
+      "io.github.outwatch" %%% "outwatch" % versions.outwatch,
+      "com.github.werk" %%% "router4s" % versions.router4s
     ),
     npmDependencies in Compile ++= Seq(
       "bootstrap" -> "4.1.0",
@@ -67,6 +69,7 @@ lazy val versions = new {
   def circe = "0.9.3"
   def akkaHttpVersion = "10.1.1"
   def akkaVersion  = "2.5.12"
+  def router4s = "0.1.0-SNAPSHOT"
   def scalatest = "3.0.5"
 }
 

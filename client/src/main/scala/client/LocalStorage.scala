@@ -7,6 +7,7 @@ import io.circe.parser._, io.circe.syntax._, io.circe.generic.auto._
 
 object LocalStorage {
   def initialState = AppState(
+      Routing.Home,
       JSLocalStorage("app.user").flatMap(value =>
         decode[Participant](value).right.toOption
       ),
