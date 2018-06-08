@@ -16,7 +16,9 @@ object QuickstartServer extends App {
 
   val routes: Routes = new Routes(sessionManager)
 
-  Http().bindAndHandle(routes.route, "localhost", 8080)
+  val port = sys.env.get("PORT").map(_.toInt).getOrElse(8080)
+
+  Http().bindAndHandle(routes.route, "localhost", port)
 
   println(s"Server online at http://localhost:8080/")
 
