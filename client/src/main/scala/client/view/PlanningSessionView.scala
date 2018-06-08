@@ -92,9 +92,11 @@ object PlanningSessionView {
       vNode <- {
         val isObserver = !isPlayer
         def btnClasses(isActive: Boolean) =
-          "btn btn-sm" :: List(if (isActive) "btn-secondary" else "btn-outline-secondary")
-        div(`class` := "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
-          form(className := "form-inline", onSubmit(storyText$) --> storyText,
+          "btn btn-sm" :: (if (isActive) List("btn-secondary", "active") else List("btn-outline-secondary"))
+        def nextRoundBtnClass = if (estimationOver) List("btn-primary") else List("btn-outline-secondary")
+
+        div(
+          form(className := "form-inline border-bottom", onSubmit(storyText$) --> storyText,
             input(
               `type` := "text",
               `class` := "form-control form-control-lg border-0",
@@ -102,13 +104,15 @@ object PlanningSessionView {
               value := text,
               onInput.value --> storyText$
             )),
-          div(`class` := "btn-toolbar my-2",
+          div(`class` := "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2",
             div(`class` := "btn-group mr-2",
-              button(`class` := "btn btn-sm btn-secondary", onClick(()) --> nextRound, "Next round")
+              button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
             ),
-            div(`class` := "btn-group mr-2",
-              button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
-              button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
+            div(`class` := "btn-toolbar my-2",
+              div(`class` := "btn-group mr-2",
+                button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
+                button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
+              )
             )
           )
         )
