@@ -14,7 +14,9 @@ object AppView {
       tag("main")(className := "container",
         state.page match {
           case Page.Home =>
-              p("Welcome to Planning Poker")
+            state.user.fold(p("Welcome to Planning Poker")) { u =>
+              SessionsView.render(u, state.session, sink)
+            }
           case Page.SignIn(_) =>
             SignInView.render(sink.redirectMap(PlanningPokerApp.Action.SignIn))
           case Page.Session(_, _) =>
@@ -30,15 +32,8 @@ object AppView {
                 div("invalid state")
             }
           case Page.Sessions(_) =>
-            state.session match {
-              case Some(session) =>
-                a(className := "btn btn-primary", href := Routing.hashPath(Page.Session(session.id)),
-                  "Open active session")
-              case _ =>
-                div(className := "text-center",
-                  button(classNames := Seq("btn", "btn-lg btn-primary"),
-                    "Start new session",
-                    onClick(Action.RequestSession()) --> sink))
+            state.user.fold(signInBtn) { u =>
+              SessionsView.render(u, state.session, sink)
             }
           case _ =>
             div("invalid route")
@@ -47,4 +42,11 @@ object AppView {
       FooterView.render()
     )
   }
+
+  private def signInBtn =
+    a(
+      "Sign in",
+      className := "btn btn-primary",
+      href := Routing.hashPath(Page.SignIn())
+    )
 }
