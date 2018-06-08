@@ -18,9 +18,9 @@ object QuickstartServer extends App {
 
   val port = sys.env.get("PORT").map(_.toInt).getOrElse(8080)
 
-  Http().bindAndHandle(routes.route, "localhost", port)
+  Http().bindAndHandle(routes.route, "0.0.0.0", port)
 
-  println(s"Server online at http://localhost:8080/")
+  println(s"Server online at 0.0.0.0:$port")
 
   Await.result(system.whenTerminated, Duration.Inf)
 }
