@@ -19,7 +19,7 @@ object SignInView {
         ),
         div(className := "mb-3"),
         button(classNames := Seq("btn", "btn-lg btn-primary", "btn-block"), "Sign in",
-          onClick(name$) --> sink)
+          onClick.map(e => e.preventDefault())(name$) --> sink)
       )
   }
     yield vNode
