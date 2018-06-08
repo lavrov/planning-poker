@@ -29,7 +29,8 @@ lazy val server = project
         "com.typesafe.akka" %% "akka-http-testkit"    % versions.akkaHttpVersion % Test,
         "com.typesafe.akka" %% "akka-testkit"         % versions.akkaVersion     % Test,
         "com.typesafe.akka" %% "akka-stream-testkit"  % versions.akkaVersion     % Test,
-      )
+      ),
+      mappings in (Compile, packageDoc) := Seq()
     )
   .dependsOn(sharedJvm)
   .enablePlugins(JavaAppPackaging)
