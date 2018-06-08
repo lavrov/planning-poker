@@ -55,7 +55,7 @@ lazy val client = project
       "css-loader" -> "0.28.11"
     ),
     scalaJSUseMainModuleInitializer := true,
-    webpackBundlingMode := BundlingMode.LibraryOnly(),
+    webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     workbenchStartMode := WorkbenchStartModes.Manual,
     workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index.html", "client/target"))
   )
