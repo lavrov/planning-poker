@@ -32,6 +32,7 @@ lazy val server = project
       )
     )
   .dependsOn(sharedJvm)
+  .enablePlugins(JavaAppPackaging)
 
 lazy val client = project
   .enablePlugins(ScalaJSBundlerPlugin, WorkbenchPlugin)
