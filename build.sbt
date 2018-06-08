@@ -57,7 +57,7 @@ lazy val client = project
     scalaJSUseMainModuleInitializer := true,
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     workbenchStartMode := WorkbenchStartModes.Manual,
-    workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index.html", "client/target"))
+    workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index-dev.html", "client/target"))
   )
 
 lazy val commonSettings = Seq(

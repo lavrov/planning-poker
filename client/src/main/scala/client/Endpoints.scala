@@ -1,8 +1,16 @@
 package client
 
-class Endpoints(baseUrl: String) {
+class Endpoints(baseUrl: String, secure: Boolean) {
   object session {
-    val create = s"http://$baseUrl/session"
-    def ws(id: String, userId: String) = s"ws://$baseUrl/session/$id/ws/$userId"
+    val create = httpUrl("/session")
+    def ws(id: String, userId: String) = wsUrl(s"/session/$id/ws/$userId")
+  }
+  private def httpUrl(path: String) = {
+    val protocol = if (secure) "https" else "http"
+    s"$protocol://$baseUrl$path"
+  }
+  private def wsUrl(path: String) = {
+    val protocol = if (secure) "wss" else "ws"
+    s"$protocol://$baseUrl$path"
   }
 }

@@ -34,7 +34,7 @@ object Routing {
 
   def parse(hashString: String): Option[Page] = {
     println(s"Parse $hashString")
-    val result = paths.data(hashString drop 1)
+    val result = paths.data(if (hashString.headOption.contains('?')) hashString drop 2 else hashString.drop(1))
     println(s"Parsed to $result")
     result
   }
