@@ -7,7 +7,7 @@ import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.Unbounded
-import org.scalajs.dom.{CloseEvent, ErrorEvent, Event, MessageEvent}
+import org.scalajs.dom.{CloseEvent, ErrorEvent, MessageEvent}
 import outwatch.Sink
 
 object WebSocketSupport {
@@ -33,6 +33,9 @@ object WebSocketSupport {
 
   def enhance(store: Store, subscriptions: AppState => Option[Sub.WebSocket]): Store = {
     var currentSub: Option[Sub.WebSocket] = None
+    val (wsSinks, sink) = Sink.redirect2[Action, Action, Observable[Action]](store.sink)((wsObs, downstreamObs) =>
+      Observable.merge(downstreamObs, wsObs.merge)
+    )
     val source =
       store.source.mapEval { state =>
         def close(sub: Sub.WebSocket): IO[Unit] = for {
@@ -43,12 +46,12 @@ object WebSocketSupport {
 
         def connect(sub: Sub.WebSocket): IO[Unit] = for {
           ws <- getOrElseCreate(sub.url)
-          _ <- store.sink <-- ws.source.map { m =>
-            sub.actionFn(m.data.toString)
-          }
         }
-          yield
-            currentSub = Some(sub)
+        yield {
+          val actionStream = ws.source.map(m => sub.actionFn(m.data.toString))
+          wsSinks.unsafeOnNext(actionStream)
+          currentSub = Some(sub)
+        }
 
         val io =
           (currentSub, subscriptions(state)) match {
@@ -64,14 +67,14 @@ object WebSocketSupport {
           }
         for (_ <- io) yield state
       }
-    Store(source, store.sink)
+    Store(source, sink)
   }
 }
 
 final case class WebSocket(url: String) {
   val ws = new org.scalajs.dom.WebSocket(url)
 
-  val source = {
+  val source: Observable[MessageEvent] = {
     var buffer = List.empty[MessageEvent]
     ws.onmessage = { (e: MessageEvent) =>
       buffer = e :: buffer
@@ -86,7 +89,7 @@ final case class WebSocket(url: String) {
     })
   }
 
-  val sink = {
+  val sink: Sink[String] = {
     var buffer = List.empty[String]
     val result =
       Sink.create[String](
