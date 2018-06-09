@@ -8,3 +8,7 @@ sbt:client> startWorkbenchServer
 sbt:client> ~fastOptJS
 ```
 Open `http://localhost:12345/`
+
+## Deploy
+
+$ sbt client/ghpagesPushSite

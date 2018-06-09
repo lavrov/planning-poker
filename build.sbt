@@ -36,7 +36,7 @@ lazy val server = project
   .enablePlugins(JavaAppPackaging)
 
 lazy val client = project
-  .enablePlugins(ScalaJSBundlerPlugin, WorkbenchPlugin)
+  .enablePlugins(ScalaJSBundlerPlugin, WorkbenchPlugin, GhpagesPlugin)
   .dependsOn(sharedJs)
   .settings(
     scalaVersion := "2.12.4",
@@ -57,7 +57,12 @@ lazy val client = project
     scalaJSUseMainModuleInitializer := true,
     webpackBundlingMode in fastOptJS := BundlingMode.LibraryOnly(),
     workbenchStartMode := WorkbenchStartModes.Manual,
-    workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index-dev.html", "client/target"))
+    workbenchDefaultRootObject := Some(("client/target/scala-2.12/classes/index-dev.html", "client/target")),
+    git.remoteRepo := "git@github.com:lavrov/planning-poker.git",
+    ghpagesNoJekyll := true,
+    ghpagesPrivateMappings :=
+      Path.selectSubpaths((Compile / resourceDirectory).value, "index.html").toSeq ++
+      (Compile / fullOptJS / webpack).value.map(_.data).map(f => (f, f.name))
   )
 
 lazy val commonSettings = Seq(
