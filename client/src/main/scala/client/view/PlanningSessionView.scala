@@ -96,7 +96,9 @@ object PlanningSessionView {
         def nextRoundBtnClass = if (estimationOver) List("btn-primary") else List("btn-outline-secondary")
 
         div(
-          form(className := "form-inline border-bottom", onSubmit(storyText$) --> storyText,
+          form(
+            className := "form-inline border-bottom",
+            onSubmit.map(e => e.preventDefault())(storyText$) --> storyText,
             input(
               `type` := "text",
               `class` := "form-control form-control-lg border-0",
