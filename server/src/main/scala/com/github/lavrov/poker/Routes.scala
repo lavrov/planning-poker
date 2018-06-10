@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.directives.RouteDirectives.complete
 import akka.http.scaladsl.server.directives.PathDirectives.path
 import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
+import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
 
 import scala.concurrent.duration._
@@ -19,6 +20,8 @@ import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
 import akka.pattern.ask
+import cats.data.OptionT
+import cats.instances.future._
 import com.github.lavrov.poker.Protocol.ClientMessage
 
 class Routes(
@@ -42,6 +45,20 @@ class Routes(
           complete(
             (sessionManager ? SessionManager.Create()).mapTo[String]
           )
+        } ~
+        path(Segment) { sessionId =>
+          get {
+            complete {
+              val maybeSession =
+                for {
+                  sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
+                  session <- OptionT((sessionActorRef ? SessionActor.Get).mapTo[Option[PlanningSession]])
+                }
+                yield
+                  session
+              maybeSession.cata[ToResponseMarshallable](HttpResponse(StatusCodes.NotFound), identity)
+            }
+          }
         } ~
         path(Segment / "ws" / Segment) { case (sessionId, userId) =>
           extractUpgradeToWebSocket { upgrade =>

@@ -6,6 +6,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 object SessionActor {
   final case class Subscribe(userId: String, ref: ActorRef)
   final case class SessionAction(action: PlanningSession.Action)
+  case object Get
   def props: Props = Props[SessionActor](new SessionActor)
 }
 
@@ -29,6 +30,8 @@ class SessionActor extends Actor with ActorLogging {
       val updated = PlanningSession.update(planningSession, action)
       planningSession = updated
       subscribers.keys.foreach(_ ! planningSession)
+    case Get =>
+      sender() ! planningSession
     case Terminated(ref) =>
       val userId = subscribers(ref)
       log.info(s"Unsubscribe $userId $ref")
