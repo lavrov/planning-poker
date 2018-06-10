@@ -6,8 +6,6 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import outwatch.{Handler, Sink}
 import outwatch.http.Http
-import io.circe.syntax._
-import io.circe.generic.auto._
 
 class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppState) {
   import PlanningPokerApp._
@@ -79,19 +77,19 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       println(s"Reducer SendPlanningSessionAction($psAction)")
       println(s"And state.session is ${state.session}")
       state -> state.session.map(_.id).zip(state.user).headOption.map { case (sessionId, user) =>
-        WebSocketSupport.send(endpoints.session.ws(sessionId, user.id), psAction.asJson.noSpaces)
+        WebSocketSupport.send(endpoints.session.ws(sessionId, user.id), Protocol.ClientMessage.SessionAction(psAction))
       }
     case Action.Noop =>
       state -> None
   }
 
   def subscriptions(state: AppState): Option[Sub.WebSocket] = {
-    import io.circe.parser.decode, io.circe.generic.auto._
     state.session.zip(state.user).headOption.map { case (s, u) =>
       Sub.WebSocket(
         endpoints.session.ws(s.id, u.id),
-        msg =>
-          Action.UpdatePlanningSession(decode[PlanningSession](msg).right.get)
+        msg => {
+          Action.UpdatePlanningSession(msg.payload)
+        }
       )
     }
   }
@@ -125,7 +123,7 @@ object PlanningPokerApp {
 
   trait Sub
   object Sub {
-    case class WebSocket(url: String, actionFn: String => Action) extends Sub
+    case class WebSocket(url: String, actionFn: Protocol.ServerMessage.SessionUpdated => Action) extends Sub
   }
 
   case class Store(source: Observable[AppState], sink: Sink[Action])

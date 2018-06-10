@@ -2,6 +2,7 @@ package client
 
 import cats.effect.IO
 import client.PlanningPokerApp.{Action, AppState, Store, Sub}
+import com.github.lavrov.poker.Protocol
 import monix.execution.Ack.Continue
 import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
@@ -9,12 +10,25 @@ import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.Unbounded
 import org.scalajs.dom.{CloseEvent, ErrorEvent, MessageEvent}
 import outwatch.Sink
+import io.circe.syntax._
+import io.circe.parser._
+import io.circe.generic.auto._
+import scala.concurrent.duration._
 
 object WebSocketSupport {
   val sockets: scala.collection.mutable.Map[String, WebSocket] = scala.collection.mutable.Map.empty
 
+  private def createSocket(url: String) = {
+    val pings =
+      Observable.timerRepeated(1.second, 1.second, Protocol.ClientMessage.Ping: Protocol.ClientMessage)
+      .map(_.asJson.noSpaces)
+    val socket = WebSocket(url)
+    (socket.sink <-- pings).unsafeRunSync()
+    socket
+  }
+
   def getOrElseCreate(url: String): IO[WebSocket] = IO {
-    sockets.getOrElseUpdate(url, WebSocket(url))
+    sockets.getOrElseUpdate(url, createSocket(url))
   }
   def closeAndRemove(url: String): IO[Unit] = IO {
     sockets.get(url).foreach { ws =>
@@ -22,12 +36,12 @@ object WebSocketSupport {
       sockets.remove(url)
     }
   }
-  def send(url: String, message: String): IO[Action] =
+  def send(url: String, message: Protocol.ClientMessage): IO[Action] =
     for {
       ws <- getOrElseCreate(url)
     }
     yield {
-      ws.sink.unsafeOnNext(message)
+      ws.sink.unsafeOnNext(message.asJson.noSpaces)
       Action.Noop
     }
 
@@ -48,7 +62,15 @@ object WebSocketSupport {
           ws <- getOrElseCreate(sub.url)
         }
         yield {
-          val actionStream = ws.source.map(m => sub.actionFn(m.data.toString))
+          val actionStream = ws.source
+              .flatMap { m =>
+                val serverMessage = decode[Protocol.ServerMessage](m.data.toString).right.get
+                serverMessage match {
+                  case Protocol.ServerMessage.Pong => Observable.empty
+                  case m: Protocol.ServerMessage.SessionUpdated => Observable(m)
+                }
+              }
+            .map(sub.actionFn)
           wsSinks.unsafeOnNext(actionStream)
           currentSub = Some(sub)
         }
