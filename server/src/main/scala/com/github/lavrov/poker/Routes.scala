@@ -47,16 +47,18 @@ class Routes(
           )
         } ~
         path(Segment) { sessionId =>
-          get {
-            complete {
-              val maybeSession =
-                for {
-                  sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
-                  session <- OptionT((sessionActorRef ? SessionActor.Get).mapTo[Option[PlanningSession]])
-                }
-                yield
-                  session
-              maybeSession.cata[ToResponseMarshallable](HttpResponse(StatusCodes.NotFound), identity)
+          respondWithHeader(`Access-Control-Allow-Origin`.*) {
+            get {
+              complete {
+                val maybeSession =
+                  for {
+                    sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
+                    session <- OptionT((sessionActorRef ? SessionActor.Get).mapTo[Option[PlanningSession]])
+                  }
+                    yield
+                      session
+                maybeSession.cata[ToResponseMarshallable](HttpResponse(StatusCodes.NotFound), identity)
+              }
             }
           }
         } ~
