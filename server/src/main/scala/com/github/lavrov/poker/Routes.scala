@@ -53,7 +53,7 @@ class Routes(
                 val maybeSession =
                   for {
                     sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
-                    session <- OptionT((sessionActorRef ? SessionActor.Get).mapTo[Option[PlanningSession]])
+                    session <- OptionT.liftF((sessionActorRef ? SessionActor.Get).mapTo[PlanningSession])
                   }
                   yield
                     session
