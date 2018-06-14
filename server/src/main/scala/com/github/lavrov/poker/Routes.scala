@@ -55,9 +55,12 @@ class Routes(
                     sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
                     session <- OptionT((sessionActorRef ? SessionActor.Get).mapTo[Option[PlanningSession]])
                   }
-                    yield
-                      session
-                maybeSession.cata[ToResponseMarshallable](HttpResponse(StatusCodes.NotFound), identity)
+                  yield
+                    session
+                    maybeSession.cata(
+                      HttpResponse(StatusCodes.NotFound): ToResponseMarshallable,
+                      implicitly[ToResponseMarshallable](_)
+                    )
               }
             }
           }
