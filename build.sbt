@@ -20,6 +20,7 @@ lazy val sharedJs = shared.js
 lazy val server = project
     .settings(commonSettings)
     .settings(
+      scalaVersion := "2.12.6",
       libraryDependencies ++= Seq(
         "com.typesafe.akka" %% "akka-http"            % versions.akkaHttpVersion,
         "com.typesafe.akka" %% "akka-http-spray-json" % versions.akkaHttpVersion,

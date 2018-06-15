@@ -23,8 +23,30 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       page match {
         case _: Page.SignedInUser if state.user.isEmpty =>
           state.copy(redirectOnSignIn = Some(page)) -> Some(Routing.navigate(Page.SignIn()))
-        case Page.Session(id, _) if !state.session.exists(_.id == id) =>
-          state.copy(page = page, session = Some(CurrentPlanningSession(id, None))) -> None
+        case Page.Session(id, _) =>
+          state.copy(page = page) -> Some {
+            if (state.session.exists(_.id == id))
+              IO.pure(Action.Noop)
+            else
+              Http.single(
+                Http.Request(endpoints.session.get(id)),
+                Http.Get
+              )
+              .attempt
+              .map {
+                case Right(response) =>
+                  response.status match {
+                    case 200 =>
+                      println("Session received")
+                      Action.ReceiveSession(id)
+                    case 404 =>
+                      Action.Noop
+                  }
+                case Left(error) =>
+                  println(s"Get Noop $error")
+                  Action.Noop
+              }
+          }
         case _ =>
           state.copy(page = page) -> None
       }
@@ -34,25 +56,24 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 
         Http.single(request, Http.Post)
           .attempt
-          .map {
+          .flatMap {
             case Right(response) =>
               if (response.status == 200) {
                 println("Received " + response.body)
-                Action.ReceiveSession(io.circe.parser.decode[String](response.body.toString).right.get)
+                val sessionId = io.circe.parser.decode[String](response.body.toString).right.get
+                Routing.navigate(Page.Session(sessionId))
               }
               else {
                 println(s"Bad response ${response.status}")
-                Action.Noop
+                IO pure Action.Noop
               }
             case Left(error) =>
               println(s"Error while creating session. $error")
-              Action.Noop
+              IO pure Action.Noop
           }
       }
     case Action.ReceiveSession(sessionId) =>
-      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> Some {
-        Routing.navigate(Page.Session(sessionId)).map(_ => Action.Noop)
-      }
+      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> None
     case Action.SignIn(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)

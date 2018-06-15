@@ -3,6 +3,7 @@ package client
 class Endpoints(baseUrl: String, secure: Boolean) {
   object session {
     val create = httpUrl("/session")
+    def get(id: String) = httpUrl(s"/session/$id")
     def ws(id: String, userId: String) = wsUrl(s"/session/$id/ws/$userId")
   }
   private def httpUrl(path: String) = {

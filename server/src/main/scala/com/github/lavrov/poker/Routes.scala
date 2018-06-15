@@ -13,9 +13,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.model.headers._
 import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Route
-import io.circe.syntax._
-import io.circe.generic.auto._
-import io.circe.parser._
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
@@ -23,6 +20,8 @@ import akka.pattern.ask
 import cats.data.OptionT
 import cats.instances.future._
 import com.github.lavrov.poker.Protocol.ClientMessage
+import com.github.lavrov.poker.Formats._
+import io.circe.syntax._, io.circe.parser._
 
 class Routes(
     sessionManager: ActorRef
@@ -47,21 +46,19 @@ class Routes(
           )
         } ~
         path(Segment) { sessionId =>
-          respondWithHeader(`Access-Control-Allow-Origin`.*) {
-            get {
-              complete {
-                val maybeSession =
-                  for {
-                    sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
-                    session <- OptionT.liftF((sessionActorRef ? SessionActor.Get).mapTo[PlanningSession])
-                  }
-                  yield
-                    session
-                    maybeSession.cata(
-                      HttpResponse(StatusCodes.NotFound): ToResponseMarshallable,
-                      implicitly[ToResponseMarshallable](_)
-                    )
-              }
+          get {
+            complete {
+              val maybeSession =
+                for {
+                  sessionActorRef <- OptionT((sessionManager ? SessionManager.Get(sessionId)).mapTo[Option[ActorRef]])
+                  session <- OptionT liftF (sessionActorRef ? SessionActor.Get).mapTo[PlanningSession]
+                }
+                yield
+                  session
+              maybeSession.cata[ToResponseMarshallable](
+                HttpResponse(StatusCodes.NotFound),
+                implicitly
+              )
             }
           }
         } ~
