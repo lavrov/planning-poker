@@ -95,21 +95,17 @@ object WebSocketSupport {
 
 final case class WebSocket(url: String) {
   val ws = new org.scalajs.dom.WebSocket(url)
-
-  val source: Observable[MessageEvent] = {
-    var buffer = List.empty[MessageEvent]
-    ws.onmessage = { (e: MessageEvent) =>
-      buffer = e :: buffer
-    }
+  private val connectable = 
     Observable.create[MessageEvent](Unbounded)(observer => {
-      observer.onNextAll(buffer.reverse)
-      buffer = null
       ws.onmessage = (e: MessageEvent) => observer.onNext(e)
       ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
       ws.onclose = (e: CloseEvent) => observer.onComplete()
       Cancelable( () => ws.close() )
-    })
-  }
+    }
+  ).replay
+
+
+  val source: Observable[MessageEvent] = connectable
 
   val sink: Sink[String] = {
     var buffer = List.empty[String]
@@ -126,6 +122,7 @@ final case class WebSocket(url: String) {
         () => IO(ws.close())
       )
     ws.onopen = { _ =>
+      connectable.connect()
       buffer.reverse.foreach(result.unsafeOnNext)
       buffer = null
     }
