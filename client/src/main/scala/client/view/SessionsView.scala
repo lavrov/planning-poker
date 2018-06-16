@@ -9,11 +9,16 @@ import outwatch.dom.dsl._
 
 object SessionsView {
 
-  def render(user: Participant, activeSession: Option[CurrentPlanningSession], sink: Sink[Action]): VNode = {
+  def render(user: Participant, activeSession: Option[Either[String, CurrentPlanningSession]], sink: Sink[Action]): VNode = {
     activeSession match {
-      case Some(session) =>
-        a(className := "btn btn-primary", href := Routing.hashPath(Page.Session(session.id)),
-          "Open active session")
+      case Some(sessionEither) =>
+        sessionEither match {
+          case Right(session) =>
+            a(className := "btn btn-primary", href := Routing.hashPath(Page.Session(session.id)),
+              "Open active session")
+          case Left(reason) =>
+            div(reason)
+        }
       case _ =>
         div(className := "text-center",
           button(classNames := Seq("btn", "btn-lg btn-primary"),

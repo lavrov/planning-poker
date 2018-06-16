@@ -1,11 +1,12 @@
 package client
 
 import cats.effect.IO
-import com.github.lavrov.poker._
+import com.github.lavrov.poker._, Formats._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import outwatch.{Handler, Sink}
 import outwatch.http.Http
+import io.circe.parser._
 
 class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppState) {
   import PlanningPokerApp._
@@ -23,9 +24,9 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       page match {
         case _: Page.SignedInUser if state.user.isEmpty =>
           state.copy(redirectOnSignIn = Some(page)) -> Some(Routing.navigate(Page.SignIn()))
-        case Page.Session(id, _) =>
+        case page@Page.Session(id, _) =>
           state.copy(page = page) -> Some {
-            if (state.session.exists(_.id == id))
+            if (state.page == page && state.session.nonEmpty)
               IO.pure(Action.Noop)
             else
               Http.single(
@@ -37,14 +38,14 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
                 case Right(response) =>
                   response.status match {
                     case 200 =>
-                      println("Session received")
-                      Action.ReceiveSession(id)
+                      val session = decode[PlanningSession](response.body.toString).right.get
+                      Action.ReceiveSession(Some(CurrentPlanningSession(id, session)))
                     case 404 =>
-                      Action.Noop
+                      Action.ReceiveSession(None)
                   }
                 case Left(error) =>
                   println(s"Get Noop $error")
-                  Action.Noop
+                  Action.ReceiveSession(None)
               }
           }
         case _ =>
@@ -60,7 +61,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
             case Right(response) =>
               if (response.status == 200) {
                 println("Received " + response.body)
-                val sessionId = io.circe.parser.decode[String](response.body.toString).right.get
+                val sessionId = decode[String](response.body.toString).right.get
                 Routing.navigate(Page.Session(sessionId))
               }
               else {
@@ -72,8 +73,8 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
               IO pure Action.Noop
           }
       }
-    case Action.ReceiveSession(sessionId) =>
-      state.copy(session = Some(CurrentPlanningSession(sessionId, None))) -> None
+    case Action.ReceiveSession(sessionOpt) =>
+      state.copy(session = Some apply sessionOpt.toRight("Session doesn't exist")) -> None
     case Action.SignIn(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
@@ -89,7 +90,7 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         Routing.navigate(Page.Home)
       }
     case Action.UpdatePlanningSession(session) =>
-      state.copy(session = state.session.map(_.copy(planningSession = Some(session)))) ->
+      state.copy(session = state.session.map(_.right.map(_.copy(planningSession = session)))) ->
       state.user.collect {
         case u if !session.participants.keySet(u.id) =>
           IO pure Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
@@ -97,15 +98,15 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
     case Action.SendPlanningSessionAction(psAction) =>
       println(s"Reducer SendPlanningSessionAction($psAction)")
       println(s"And state.session is ${state.session}")
-      state -> state.session.map(_.id).zip(state.user).headOption.map { case (sessionId, user) =>
-        WebSocketSupport.send(endpoints.session.ws(sessionId, user.id), Protocol.ClientMessage.SessionAction(psAction))
+      state -> state.session.flatMap(_.right.toOption).zip(state.user).headOption.map { case (currentSession, user) =>
+        WebSocketSupport.send(endpoints.session.ws(currentSession.id, user.id), Protocol.ClientMessage.SessionAction(psAction))
       }
     case Action.Noop =>
       state -> None
   }
 
   def subscriptions(state: AppState): Option[Sub.WebSocket] = {
-    state.session.zip(state.user).headOption.map { case (s, u) =>
+    state.session.flatMap(_.right.toOption).zip(state.user).headOption.map { case (s, u) =>
       Sub.WebSocket(
         endpoints.session.ws(s.id, u.id),
         msg => {
@@ -121,13 +122,13 @@ object PlanningPokerApp {
   case class AppState(
       page: Page,
       user: Option[Participant],
-      session: Option[CurrentPlanningSession] = None,
+      session: Option[Either[String, CurrentPlanningSession]] = None,
       redirectOnSignIn: Option[Page] = None
   )
 
   case class CurrentPlanningSession(
       id: String,
-      planningSession: Option[PlanningSession]
+      planningSession: PlanningSession
   )
 
   sealed trait Action
@@ -135,7 +136,7 @@ object PlanningPokerApp {
     case class SignIn(name: String) extends Action
     case object SignOut extends Action
     case class RequestSession() extends Action
-    case class ReceiveSession(sessionId: String) extends Action
+    case class ReceiveSession(session: Option[CurrentPlanningSession]) extends Action
     case class SendPlanningSessionAction(action: PlanningSession.Action) extends Action
     case class UpdatePlanningSession(session: PlanningSession) extends Action
     case class ChangePage(page: Page) extends Action

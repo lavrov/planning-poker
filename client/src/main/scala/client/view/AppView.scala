@@ -20,16 +20,18 @@ object AppView {
           case Page.SignIn(_) =>
             SignInView.render(sink.redirectMap(PlanningPokerApp.Action.SignIn))
           case Page.Session(_, _) =>
-            state.session.zip(state.user).headOption match {
-              case Some((session, user)) =>
-                session.planningSession match {
-                  case Some(planningSession) =>
-                    PlanningSessionView.render(planningSession, user, sink)
-                  case None =>
-                    div("Connecting...")
-                }
-              case None =>
-                div("invalid state")
+            state.user.fold(signInBtn) { user =>
+              state.session match {
+                case Some(sessionEither) =>
+                  sessionEither match {
+                    case Right(currentSession) =>
+                      PlanningSessionView.render(currentSession.planningSession, user, sink)
+                    case Left(reason) =>
+                      div(reason)
+                  }
+                case None =>
+                  div("Connecting...")
+              }
             }
           case Page.Sessions(_) =>
             state.user.fold(signInBtn) { u =>
