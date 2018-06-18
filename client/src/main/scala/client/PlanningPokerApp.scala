@@ -44,7 +44,6 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
                       Action.ReceiveSession(None)
                   }
                 case Left(error) =>
-                  println(s"Get Noop $error")
                   Action.ReceiveSession(None)
               }
           }
@@ -99,8 +98,6 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
           IO pure Action.SendPlanningSessionAction(PlanningSession.Action.AddPlayer(u))
       }
     case Action.SendPlanningSessionAction(psAction) =>
-      println(s"Reducer SendPlanningSessionAction($psAction)")
-      println(s"And state.session is ${state.session}")
       state -> state.session.flatMap(_.right.toOption).zip(state.user).headOption.map { case (currentSession, user) =>
         WebSocketSupport.send(endpoints.session.ws(currentSession.id, user.id), Protocol.ClientMessage.SessionAction(psAction))
       }

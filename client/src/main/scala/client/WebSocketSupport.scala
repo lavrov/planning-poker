@@ -26,7 +26,7 @@ object WebSocketSupport {
       val ows = new OpenWebSocket(ws)
       cb(Right(ows))
     }
-    ws.onerror = (e: ErrorEvent) => cb(Left(new Exception(e.message)))
+    ws.onerror = (e: ErrorEvent) => cb(Left(new Exception("Cannot create WebSocket")))
   }
 
   private def attachPingStream(ows: OpenWebSocket): IO[Cancelable] = {
@@ -77,51 +77,57 @@ object WebSocketSupport {
     )
     val source =
       store.source.mapEval { state =>
-        def close(sub: Sub.WebSocket): IO[Unit] =
+        def close(sub: Sub.WebSocket): IO[Option[Action]] =
           for {
             _ <- closeAndRemove(sub.url)
           }
-          yield
-            currentSub = None
-
-        def connect(sub: Sub.WebSocket): IO[Unit] =
-          for {
-            ws <- getOrElseCreate(sub.url)
-          }
           yield {
-            val connectedAction = sub.connectedAction.toList
-            val disconnectedAction = sub.disconnectedAction.toList
-            val actionStream =
-              ws.source
-              .flatMap { m =>
-                val serverMessage = decode[Protocol.ServerMessage](m.data.toString).right.get
-                serverMessage match {
-                  case Protocol.ServerMessage.Pong => Observable.empty
-                  case m: Protocol.ServerMessage.SessionUpdated => Observable(m)
-                }
-              }
-              .map(sub.actionFn)
-	      .doOnErrorEval(_ => close(sub))
-	      .doOnCompleteEval(close(sub))
-              .startWith(connectedAction)
-              .endWith(disconnectedAction)
-            wsSinks.unsafeOnNext(actionStream)
-            currentSub = Some(sub)
+            currentSub = None
+            sub.disconnectedAction
+          }
+
+        def connect(sub: Sub.WebSocket): IO[Option[Action]] =
+          getOrElseCreate(sub.url)
+          .attempt
+          .map {
+            case Right(ws) =>
+	      val actionStream =
+		ws.source
+		.timeoutOnSlowUpstream(5.seconds)
+		.flatMap { m =>
+		  val serverMessage = decode[Protocol.ServerMessage](m.data.toString).right.get
+		  serverMessage match {
+		    case Protocol.ServerMessage.Pong => Observable.empty
+		    case m: Protocol.ServerMessage.SessionUpdated => Observable(m)
+		  }
+		}
+		.map(sub.actionFn)
+		.onErrorFallbackTo(Observable.empty)
+		.++(Observable.fromIO(close(sub)).collect { case Some(a) => a })
+	      wsSinks.unsafeOnNext(actionStream)
+	      currentSub = Some(sub)
+              sub.connectedAction
+            case Left(error) =>
+              sub.disconnectedAction
           }
 
         val io =
           (currentSub, subscriptions(state)) match {
-            case (None, None) => IO.pure(())
+            case (None, None) => IO.pure(None)
             case (Some(s), None) =>
               close(s)
             case (None, Some(s)) =>
               connect(s)
             case (Some(current), Some(updated)) =>
-              if (current.url == updated.url) IO.pure(()) // the same subscrbtion -- do nothing
+              if (current.url == updated.url) IO.pure(None) // the same subscrbtion -- do nothing
               else
                 close(current).flatMap(_ => connect(updated))
           }
-        for (_ <- io) yield state
+        for (maybeAction <- io)
+        yield {
+          maybeAction.foreach(sink.unsafeOnNext)
+          state
+        }
       }
     Store(source, sink)
   }
@@ -133,7 +139,7 @@ final class OpenWebSocket(ws: WebSocket) {
     Observable.create[MessageEvent](Unbounded) {
       observer =>
         ws.onmessage = (e: MessageEvent) => observer.onNext(e)
-        ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
+        ws.onerror = (e: ErrorEvent) => observer.onError(new Exception("WebSocket error"))
         ws.onclose = (e: CloseEvent) => observer.onComplete()
         Cancelable( () => ws.close() )
     }
