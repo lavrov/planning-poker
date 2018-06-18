@@ -14,28 +14,53 @@ import io.circe.syntax._
 import io.circe.parser._
 import io.circe.generic.auto._
 import scala.concurrent.duration._
+import org.scalajs.dom.WebSocket
+import cats.data.OptionT
 
 object WebSocketSupport {
-  val sockets: scala.collection.mutable.Map[String, WebSocket] = scala.collection.mutable.Map.empty
+  val sockets: scala.collection.mutable.Map[String, OpenWebSocket] = scala.collection.mutable.Map.empty
 
-  private def createSocket(url: String) = {
+  private def createSocket(url: String): IO[OpenWebSocket] = IO.async { cb =>
+    val ws = new WebSocket(url)
+    ws.onopen = { _ =>
+      val ows = new OpenWebSocket(ws)
+      cb(Right(ows))
+    }
+    ws.onerror = (e: ErrorEvent) => cb(Left(new Exception(e.message)))
+  }
+
+  private def attachPingStream(ows: OpenWebSocket): IO[Cancelable] = {
     val pings =
       Observable.timerRepeated(1.second, 1.second, Protocol.ClientMessage.Ping: Protocol.ClientMessage)
       .map(_.asJson.noSpaces)
-    val socket = WebSocket(url)
-    (socket.sink <-- pings).unsafeRunSync()
-    socket
+    ows.sink <-- pings
   }
 
-  def getOrElseCreate(url: String): IO[WebSocket] = IO {
-    sockets.getOrElseUpdate(url, createSocket(url))
-  }
-  def closeAndRemove(url: String): IO[Unit] = IO {
-    sockets.get(url).foreach { ws =>
-      ws.ws.close()
-      sockets.remove(url)
+  def getOrElseCreate(url: String): IO[OpenWebSocket] =
+    for {
+      wsOpt <- IO { sockets.get(url) }
+      ws <-
+        wsOpt.fold(
+          for {
+            ows <- createSocket(url)
+	    _ <- attachPingStream(ows)
+          }
+          yield {
+            sockets.update(url, ows)
+            ows
+          }
+        )(IO.pure)
     }
-  }
+    yield ws
+
+  def closeAndRemove(url: String): IO[Option[Unit]] = (
+    for {
+      ws <- OptionT(IO { sockets.remove(url) })
+      res <- OptionT.liftF(ws.close())
+    }
+    yield res
+  ).value
+
   def send(url: String, message: Protocol.ClientMessage): IO[Action] =
     for {
       ws <- getOrElseCreate(url)
@@ -52,17 +77,22 @@ object WebSocketSupport {
     )
     val source =
       store.source.mapEval { state =>
-        def close(sub: Sub.WebSocket): IO[Unit] = for {
-          _ <- closeAndRemove(sub.url)
-        }
+        def close(sub: Sub.WebSocket): IO[Unit] =
+          for {
+            _ <- closeAndRemove(sub.url)
+          }
           yield
             currentSub = None
 
-        def connect(sub: Sub.WebSocket): IO[Unit] = for {
-          ws <- getOrElseCreate(sub.url)
-        }
-        yield {
-          val actionStream = ws.source
+        def connect(sub: Sub.WebSocket): IO[Unit] =
+          for {
+            ws <- getOrElseCreate(sub.url)
+          }
+          yield {
+            val connectedAction = sub.connectedAction.toList
+            val disconnectedAction = sub.disconnectedAction.toList
+            val actionStream =
+              ws.source
               .flatMap { m =>
                 val serverMessage = decode[Protocol.ServerMessage](m.data.toString).right.get
                 serverMessage match {
@@ -70,10 +100,14 @@ object WebSocketSupport {
                   case m: Protocol.ServerMessage.SessionUpdated => Observable(m)
                 }
               }
-            .map(sub.actionFn)
-          wsSinks.unsafeOnNext(actionStream)
-          currentSub = Some(sub)
-        }
+              .map(sub.actionFn)
+	      .doOnErrorEval(_ => close(sub))
+	      .doOnCompleteEval(close(sub))
+              .startWith(connectedAction)
+              .endWith(disconnectedAction)
+            wsSinks.unsafeOnNext(actionStream)
+            currentSub = Some(sub)
+          }
 
         val io =
           (currentSub, subscriptions(state)) match {
@@ -93,40 +127,27 @@ object WebSocketSupport {
   }
 }
 
-final case class WebSocket(url: String) {
-  val ws = new org.scalajs.dom.WebSocket(url)
-  private val connectable = 
-    Observable.create[MessageEvent](Unbounded)(observer => {
-      ws.onmessage = (e: MessageEvent) => observer.onNext(e)
-      ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
-      ws.onclose = (e: CloseEvent) => observer.onComplete()
-      Cancelable( () => ws.close() )
+final class OpenWebSocket(ws: WebSocket) {
+    
+  val source: Observable[MessageEvent] =
+    Observable.create[MessageEvent](Unbounded) {
+      observer =>
+        ws.onmessage = (e: MessageEvent) => observer.onNext(e)
+        ws.onerror = (e: ErrorEvent) => observer.onError(new Exception(e.message))
+        ws.onclose = (e: CloseEvent) => observer.onComplete()
+        Cancelable( () => ws.close() )
     }
-  ).replay
 
+  val sink: Sink[String] =
+    Sink.create[String](
+      s => IO {
+        ws.send(s)
+        Continue
+      },
+      _ => IO.pure(()),
+      () => IO(ws.close())
+    )
 
-  val source: Observable[MessageEvent] = connectable
-
-  val sink: Sink[String] = {
-    var buffer = List.empty[String]
-    val result =
-      Sink.create[String](
-        s => IO {
-          if (ws.readyState == org.scalajs.dom.WebSocket.OPEN)
-            ws.send(s)
-          else
-            buffer = s :: buffer
-          Continue
-        },
-        _ => IO.pure(()),
-        () => IO(ws.close())
-      )
-    ws.onopen = { _ =>
-      connectable.connect()
-      buffer.reverse.foreach(result.unsafeOnNext)
-      buffer = null
-    }
-    result
-  }
+  def close(): IO[Unit] = IO { ws.close() }
 
 }

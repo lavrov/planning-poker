@@ -75,6 +75,9 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
       }
     case Action.ReceiveSession(sessionOpt) =>
       state.copy(session = Some apply sessionOpt.toRight("Session doesn't exist")) -> None
+    case Action.UpdateSocketStatus(status) =>
+      state.copy(session =
+        state.session.map(_.right.map(session => session.copy(status = status)))) -> None
     case Action.SignIn(userName) =>
       val id = java.util.UUID.randomUUID().toString
       val u = Participant(id, userName)
@@ -111,7 +114,9 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         endpoints.session.ws(s.id, u.id),
         msg => {
           Action.UpdatePlanningSession(msg.payload)
-        }
+        },
+        Some(Action.UpdateSocketStatus(true)),
+        Some(Action.UpdateSocketStatus(false)),
       )
     }
   }
@@ -128,7 +133,8 @@ object PlanningPokerApp {
 
   case class CurrentPlanningSession(
       id: String,
-      planningSession: PlanningSession
+      planningSession: PlanningSession,
+      status: Boolean = false
   )
 
   sealed trait Action
@@ -137,6 +143,7 @@ object PlanningPokerApp {
     case object SignOut extends Action
     case class RequestSession() extends Action
     case class ReceiveSession(session: Option[CurrentPlanningSession]) extends Action
+    case class UpdateSocketStatus(connected: Boolean) extends Action
     case class SendPlanningSessionAction(action: PlanningSession.Action) extends Action
     case class UpdatePlanningSession(session: PlanningSession) extends Action
     case class ChangePage(page: Page) extends Action
@@ -145,7 +152,12 @@ object PlanningPokerApp {
 
   trait Sub
   object Sub {
-    case class WebSocket(url: String, actionFn: Protocol.ServerMessage.SessionUpdated => Action) extends Sub
+    case class WebSocket(
+        url: String,
+        actionFn: Protocol.ServerMessage.SessionUpdated => Action,
+        connectedAction: Option[Action],
+        disconnectedAction: Option[Action])
+      extends Sub
   }
 
   case class Store(source: Observable[AppState], sink: Sink[Action])

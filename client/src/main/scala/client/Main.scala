@@ -10,7 +10,8 @@ object Main {
     BootstrapCSS
     CSSLoader
     val initState = LocalStorage.initialState
-    val endpoints = new Endpoints("planning-poker-server.herokuapp.com", secure = true)
+    //val endpoints = new Endpoints("planning-poker-server.herokuapp.com", secure = true)
+    val endpoints = new Endpoints("localhost:8080", secure = false)
     val app = new PlanningPokerApp(endpoints, initState)
 
     val run =

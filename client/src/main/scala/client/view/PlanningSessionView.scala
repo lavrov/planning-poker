@@ -2,6 +2,7 @@ package client.view
 
 import client.PlanningPokerApp
 import client.PlanningPokerApp.Action
+import client.PlanningPokerApp.CurrentPlanningSession
 import com.github.lavrov.poker.{Participant, PlanningSession}
 import outwatch.{Handler, Sink}
 import outwatch.dom.VNode
@@ -9,7 +10,8 @@ import outwatch.dom.dsl._
 import monix.execution.Scheduler.Implicits.global
 
 object PlanningSessionView {
-  def render(planningSession: PlanningSession, user: Participant, sink: Sink[Action]): VNode = {
+  def render(currentSession: CurrentPlanningSession, user: Participant, sink: Sink[Action]): VNode = {
+    import currentSession.planningSession
     val (players, observers) = planningSession.participants.values.toList.partition(p => planningSession.players(p.id))
     val allGaveEstimates =
       players.forall(p => planningSession.estimates.participantEstimates.contains(p.id))
@@ -27,7 +29,7 @@ object PlanningSessionView {
       PlanningPokerApp.Action.SendPlanningSessionAction(
         PlanningSession.Action.SetStoryText(text)))
     div(
-      header(isPlayer, allGaveEstimates, planningSession.estimates.storyText,
+      header(isPlayer, allGaveEstimates, planningSession.estimates.storyText, currentSession.status,
         becomePlayer, becomeObserver, clearEstimates, setStoryText),
       div(
         if (isPlayer)
@@ -86,6 +88,7 @@ object PlanningSessionView {
       isPlayer: Boolean,
       estimationOver: Boolean,
       text: String,
+      connected: Boolean,
       becomePlayer: Sink[Unit], becomeObserver: Sink[Unit], nextRound: Sink[Unit], storyText: Sink[String]): VNode = {
     for {
       storyText$ <- Handler.create[String]
@@ -96,27 +99,28 @@ object PlanningSessionView {
         def nextRoundBtnClass = if (estimationOver) List("btn-primary") else List("btn-outline-secondary")
 
         div(
-          form(
-            className := "form-inline border-bottom",
-            onSubmit.map(e => e.preventDefault())(storyText$) --> storyText,
-            input(
-              `type` := "text",
-              `class` := "form-control form-control-lg border-0",
-              placeholder := "Enter story description",
-              value := text,
-              onInput.value --> storyText$
-            )),
           div(`class` := "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2",
-            div(`class` := "btn-group mr-2",
-              button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
-            ),
+	    form(
+	      className := "form-inline border-bottom",
+	      onSubmit.map(e => e.preventDefault())(storyText$) --> storyText,
+	      input(
+		`type` := "text",
+		`class` := "form-control form-control-lg border-0",
+		placeholder := "Enter story description",
+		value := text,
+		onInput.value --> storyText$
+	      )),
             div(`class` := "btn-toolbar my-2",
+	      div(`class` := "btn-group mr-2",
+		button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
+	      ),
               div(`class` := "btn-group mr-2",
                 button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
                 button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
-              )
+              ),
+	      span(`class` := s"badge badge-pill badge-${if (connected) "success" else "danger"} m-2", if (connected) "Connected" else "Disconnected"),
             )
-          )
+	  )
         )
       }
     }

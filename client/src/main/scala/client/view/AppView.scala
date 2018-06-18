@@ -15,7 +15,7 @@ object AppView {
         state.page match {
           case Page.Home =>
             state.user.fold(p("Welcome to Planning Poker")) { u =>
-              SessionsView.render(u, state.session, sink)
+              SessionsView.render(u, None, sink)
             }
           case Page.SignIn(_) =>
             SignInView.render(sink.redirectMap(PlanningPokerApp.Action.SignIn))
@@ -25,7 +25,7 @@ object AppView {
                 case Some(sessionEither) =>
                   sessionEither match {
                     case Right(currentSession) =>
-                      PlanningSessionView.render(currentSession.planningSession, user, sink)
+                      PlanningSessionView.render(currentSession, user, sink)
                     case Left(reason) =>
                       div(reason)
                   }
