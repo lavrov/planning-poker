@@ -3,7 +3,7 @@ package client.view
 import client.PlanningPokerApp
 import client.PlanningPokerApp.Action
 import client.PlanningPokerApp.CurrentPlanningSession
-import com.github.lavrov.poker.{Participant, PlanningSession}
+import com.github.lavrov.poker.{Card, Participant, PlanningSession}
 import outwatch.{Handler, Sink}
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
@@ -15,6 +15,13 @@ object PlanningSessionView {
     val (players, observers) = planningSession.participants.values.toList.partition(p => planningSession.players(p.id))
     val allGaveEstimates =
       players.forall(p => planningSession.estimates.participantEstimates.contains(p.id))
+    val estimates =
+      players
+        .flatMap(p => planningSession.estimates.participantEstimates.get(p.id))
+        .collect {
+          case Card.Number(v) => v
+        }
+    def mean = estimates.sum / estimates.size
     def isPlayer = planningSession.players.contains(user.id)
     def becomePlayer = sink.redirectMap[Unit](_ =>
         PlanningPokerApp.Action.SendPlanningSessionAction(
@@ -77,7 +84,10 @@ object PlanningSessionView {
         ),
         div(className := "col-sm",
           div(className := "card my-3 box-shadow",
-            div(className := "card-header", "Stats")
+            div(className := "card-header", "Stats"),
+            div(className := "card-body",
+              if (allGaveEstimates) span("Average: ", mean) else span()
+            )
           )
         )
       )
