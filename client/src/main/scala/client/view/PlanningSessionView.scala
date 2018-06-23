@@ -58,7 +58,7 @@ object PlanningSessionView {
                   val status =
                     planningSession.estimates.participantEstimates.get(participant.id)
                       .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
-                  li(className := "list-group-item d-flex justify-content-between align-items-center",
+                  li(className := "list-group-item d-flex justify-content-between align-items-center animated fadeIn",
                     name,
                     for (st <- status) yield
                       span(className := "badge badge-primary badge-pill animated bounceIn", st)
@@ -81,7 +81,7 @@ object PlanningSessionView {
         ),
         div(className := "col-sm",
           allGaveEstimates.option(
-            div(className := "card my-3 box-shadow",
+            div(className := "card my-3 box-shadow animated fadeIn",
               div(className := "card-header", "Stats"),
               div(className := "card-body",
                 span("Average: ", mean)
