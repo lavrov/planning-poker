@@ -9,13 +9,18 @@ import io.circe.syntax._
 import io.circe.generic.auto._
 
 object LocalStorage {
-  def initialState = AppState(
-      Page.Home,
-      JSLocalStorage("app.user").flatMap(value =>
-        decode[Participant](value).right.toOption
-      )
+
+  def read: IO[Option[Participant]] = IO {
+    JSLocalStorage("app.user").flatMap(value =>
+      decode[Participant](value).right.toOption
     )
+  }
+
   def persist(user: Participant): IO[Unit] = IO {
     JSLocalStorage.update("app.user", user.asJson.noSpaces)
+  }
+
+  val clear: IO[Unit] = IO {
+    JSLocalStorage.clear()
   }
 }

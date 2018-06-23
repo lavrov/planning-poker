@@ -1,6 +1,7 @@
 package client
 
 import cats.effect.IO
+import cats.syntax.apply._
 import com.github.lavrov.poker._, Formats._
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
@@ -13,7 +14,9 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
 
   def createStore: IO[Store] =
     for {
-      store0 <- Store.create(initState, reducer)
+      maybeUser <- LocalStorage.read
+      stateWithUser = initState.copy(user = maybeUser)
+      store0 <- Store.create(stateWithUser, reducer)
       store1 = WebSocketSupport.enhance(Store(store0.source, store0.sink), subscriptions)
       store2 <- Routing.enhance(store1)
     }
@@ -88,8 +91,8 @@ class PlanningPokerApp(endpoints: Endpoints, initState: PlanningPokerApp.AppStat
         yield Action.Noop
       }
     case Action.SignOut =>
-      state.copy(user = None, session = None) -> Some {
-        Routing.navigate(Page.Home)
+      initState -> Some {
+        LocalStorage.clear *> Routing.navigate(Page.Home)
       }
     case Action.UpdatePlanningSession(session) =>
       state.copy(session = state.session.map(_.right.map(_.copy(planningSession = session)))) ->
@@ -123,7 +126,7 @@ object PlanningPokerApp {
 
   case class AppState(
       page: Page,
-      user: Option[Participant],
+      user: Option[Participant] = None,
       session: Option[Either[String, CurrentPlanningSession]] = None,
       redirectOnSignIn: Option[Page] = None
   )
