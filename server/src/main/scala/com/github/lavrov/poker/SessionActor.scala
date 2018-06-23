@@ -2,6 +2,8 @@ package com.github.lavrov.poker
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 
+import scala.collection.immutable.ListMap
+
 
 object SessionActor {
   final case class Subscribe(userId: String, ref: ActorRef)
@@ -15,7 +17,7 @@ class SessionActor extends Actor with ActorLogging {
 
   var subscribers: Map[ActorRef, String] = Map.empty
   var planningSession: PlanningSession = PlanningSession(
-    Map.empty,
+    ListMap.empty,
     Set.empty,
     Estimates()
   )

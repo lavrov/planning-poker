@@ -1,8 +1,9 @@
 package com.github.lavrov.poker
 
+import scala.collection.immutable.ListMap
 
- case class PlanningSession(
-    participants: Map[String, Participant],
+case class PlanningSession(
+    participants: ListMap[String, Participant],
     players: Set[String],
     estimates: Estimates
 )
