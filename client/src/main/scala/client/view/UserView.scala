@@ -12,28 +12,30 @@ object UserView {
     for {
       name$ <- Handler.create[String]
       vNode <-
-        user.fold(
-          div(
-            input(
-              placeholder := "Name",
-              onInput.value --> name$
-            ),
-            button(
-              "Log in",
-              onClick(name$) --> onLogin,
-              disabled <-- name$.map(_.isEmpty).startWith(true :: Nil)
+        user match {
+          case Some(u) =>
+            div(u.name,
+              onSessionJoin.map(
+                onJoin =>
+                  button(
+                    "join",
+                    onClick(()) --> onJoin
+                  )
+              )
             )
-          )
-        )( u =>
-          div(u.name,
-            onSessionJoin.fold(
-              div()
-            )(
-              onJoin =>
-                button(
-                  "join",
-                  onClick(()) --> onJoin
-                ))))
+          case None =>
+            div(
+              input(
+                placeholder := "Name",
+                onInput.value --> name$
+              ),
+              button(
+                "Log in",
+                onClick(name$) --> onLogin,
+                disabled <-- name$.map(_.isEmpty).startWith(true :: Nil)
+              )
+            )
+        }
     }
     yield vNode
 }

@@ -69,6 +69,7 @@ lazy val client = project
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
+    "org.typelevel" %%% "mouse" % "0.17",
     "org.scalatest" %% "scalatest" % versions.scalatest % Test
   )
 )

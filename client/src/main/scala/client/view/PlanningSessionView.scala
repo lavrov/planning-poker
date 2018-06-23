@@ -8,6 +8,7 @@ import outwatch.{Handler, Sink}
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
 import monix.execution.Scheduler.Implicits.global
+import mouse.boolean._
 
 object PlanningSessionView {
   def render(currentSession: CurrentPlanningSession, user: Participant, sink: Sink[Action]): VNode = {
@@ -39,16 +40,13 @@ object PlanningSessionView {
       header(isPlayer, allGaveEstimates, planningSession.estimates.storyText, currentSession.status,
         becomePlayer, becomeObserver, clearEstimates, setStoryText),
       div(
-        if (isPlayer)
-          Some(
-            CardsView.render(
-              planningSession.estimates.participantEstimates.get(user.id),
-              sink.redirectMap { card =>
-                PlanningPokerApp.Action.SendPlanningSessionAction(
-                  PlanningSession.Action.RegisterEstimate(user.id, card))
-              }))
-        else
-          None
+        isPlayer.option(
+          CardsView.render(
+            planningSession.estimates.participantEstimates.get(user.id),
+            sink.redirectMap { card =>
+              PlanningPokerApp.Action.SendPlanningSessionAction(
+                PlanningSession.Action.RegisterEstimate(user.id, card))
+            }))
       ),
       div(className := "row",
         div(className := "col-sm",
@@ -68,7 +66,7 @@ object PlanningSessionView {
               }
             )
           ),
-          if (observers.nonEmpty)
+          observers.nonEmpty.option(
             div(className := "card my-3 box-shadow",
               div(className := "card-header", "Observers"),
               ul(className := "list-group list-group-flush",
@@ -79,14 +77,15 @@ object PlanningSessionView {
                   )
               )
             )
-          else
-            div()
+          )
         ),
         div(className := "col-sm",
-          div(className := "card my-3 box-shadow",
-            div(className := "card-header", "Stats"),
-            div(className := "card-body",
-              if (allGaveEstimates) span("Average: ", mean) else span()
+          allGaveEstimates.option(
+            div(className := "card my-3 box-shadow",
+              div(className := "card-header", "Stats"),
+              div(className := "card-body",
+                span("Average: ", mean)
+              )
             )
           )
         )
@@ -105,14 +104,15 @@ object PlanningSessionView {
       vNode <- {
         val isObserver = !isPlayer
         def btnClasses(isActive: Boolean) =
-          "btn btn-sm" :: (if (isActive) List("btn-secondary", "active") else List("btn-outline-secondary"))
-        def nextRoundBtnClass = if (estimationOver) List("btn-primary") else List("btn-outline-secondary")
+          "btn btn-sm" :: isActive.fold(List("btn-secondary", "active"), List("btn-outline-secondary"))
+        def nextRoundBtnClass = estimationOver.fold("btn-primary", "btn-outline-secondary")
 
         div(
           div(`class` := "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2",
             div(`class` := "btn-toolbar my-2",
               div(`class` := "btn-group mr-2",
-                button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
+                button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass :: Nil,
+                  onClick(()) --> nextRound, "Next round")
               ),
               div(`class` := "btn-group mr-2",
                 button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),

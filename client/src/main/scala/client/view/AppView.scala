@@ -5,6 +5,7 @@ import client.PlanningPokerApp.{Action, AppState}
 import outwatch.Sink
 import outwatch.dom.VNode
 import outwatch.dom.dsl._
+import mouse.option._
 
 object AppView {
 
@@ -14,9 +15,10 @@ object AppView {
       tag("main")(className := "container",
         state.page match {
           case Page.Home =>
-            state.user.fold(p("Welcome to Planning Poker")) { u =>
-              SessionsView.render(u, None, sink)
-            }
+            state.user.cata(
+              u => SessionsView.render(u, None, sink),
+              p("Welcome to Planning Poker")
+            )
           case Page.SignIn(_) =>
             SignInView.render(sink.redirectMap(PlanningPokerApp.Action.SignIn))
           case Page.Session(_, _) =>
