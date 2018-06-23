@@ -35,7 +35,7 @@ class SessionActor extends Actor with ActorLogging {
     case Terminated(ref) =>
       val userId = subscribers(ref)
       log.info(s"Unsubscribe $userId $ref")
-      planningSession = PlanningSession.update(planningSession, PlanningSession.Action.RemoveParticipant(userId))
       subscribers -= ref
+      self ! SessionAction(PlanningSession.Action.RemoveParticipant(userId))
   }
 }
