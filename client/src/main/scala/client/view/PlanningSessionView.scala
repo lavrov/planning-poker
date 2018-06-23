@@ -100,27 +100,27 @@ object PlanningSessionView {
 
         div(
           div(`class` := "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2",
-	    form(
-	      className := "form-inline border-bottom",
-	      onSubmit.map(e => e.preventDefault())(storyText$) --> storyText,
-	      input(
-		`type` := "text",
-		`class` := "form-control form-control-lg border-0",
-		placeholder := "Enter story description",
-		value := text,
-		onInput.value --> storyText$
-	      )),
-            div(`class` := "btn-toolbar my-2",
-	      div(`class` := "btn-group mr-2",
-		button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
-	      ),
-              div(`class` := "btn-group mr-2",
-                button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
-                button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
-              ),
-	      span(`class` := s"badge badge-pill badge-${if (connected) "success" else "danger"} m-2", if (connected) "Connected" else "Disconnected"),
+            form(
+              className := "form-inline border-bottom",
+              onSubmit.map(e => e.preventDefault())(storyText$) --> storyText,
+              input(`type` := "text", `class` := "form-control form-control-lg border-0",
+                placeholder := "Enter story description",
+                value := text,
+                onInput.value --> storyText$
+              )),
+              div(`class` := "btn-toolbar my-2",
+                div(`class` := "btn-group mr-2",
+                  button(classNames := "btn" :: "btn-sm" :: nextRoundBtnClass, onClick(()) --> nextRound, "Next round")
+                ),
+                div(`class` := "btn-group mr-2",
+                  button(classNames := btnClasses(isPlayer), onClick(()) --> becomePlayer, "Player"),
+                  button(classNames := btnClasses(isObserver), onClick(()) --> becomeObserver, "Observer")
+                ),
+              span(`class` := s"badge badge-pill badge-${if (connected) "success" else "danger"} m-2",
+                if (connected) "Connected" else "Disconnected"
+              )
             )
-	  )
+	        )
         )
       }
     }
