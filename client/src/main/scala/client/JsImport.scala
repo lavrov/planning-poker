@@ -10,4 +10,7 @@ object JsImport {
 
   @JSImport("!style-loader!css-loader!bootstrap/dist/css/bootstrap.css", JSImport.Default ) @js.native
   object bootstrap extends js.Any
+
+  @JSImport("!style-loader!css-loader!animate.css/animate.css", JSImport.Default ) @js.native
+  object animate extends js.Any
 }

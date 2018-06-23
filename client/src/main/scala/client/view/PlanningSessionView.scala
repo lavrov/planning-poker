@@ -56,7 +56,7 @@ object PlanningSessionView {
                   li(className := "list-group-item d-flex justify-content-between align-items-center",
                     name,
                     for (st <- status) yield
-                      span(className := "badge badge-primary badge-pill", st)
+                      span(className := "badge badge-primary badge-pill animated bounceIn", st)
                   )
               }
             )

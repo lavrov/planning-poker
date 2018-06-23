@@ -8,6 +8,7 @@ import outwatch.dom.dsl._
 object Main {
   def main(args: Array[String]): Unit = {
     JsImport.bootstrap
+    JsImport.animate
     JsImport.main
     val initState = LocalStorage.initialState
     val endpoints = new Endpoints("planning-poker-server.herokuapp.com", secure = true)

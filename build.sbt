@@ -49,7 +49,8 @@ lazy val client = project
     npmDependencies in Compile ++= Seq(
       "bootstrap" -> "4.1.0",
       "jquery" -> "1.9.1",
-      "popper.js" -> "1.14.0"
+      "popper.js" -> "1.14.0",
+      "animate.css" -> "3.5.2"
     ),
     npmDevDependencies in Compile ++= Seq(
       "style-loader" -> "0.21.0",
