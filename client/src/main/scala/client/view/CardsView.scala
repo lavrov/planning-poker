@@ -18,7 +18,7 @@ object CardsView {
   )
 
   def render(selected: Option[Card], onSelect: Sink[Option[Card]]): VNode =
-    div(className := "my-3",
+    div(className := "my-3 animated fadeIn",
       className := "btn-group btn-group-toggle",
       role := "group",
       configuration.map(card =>
