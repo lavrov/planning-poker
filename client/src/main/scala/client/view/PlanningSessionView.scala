@@ -101,11 +101,7 @@ object PlanningSessionView {
                       case _ => h6
                     }
                     hTag(className := "text-center",
-                      estimate.sliding(2, 1).flatMap {
-                        case first :: second :: Nil =>
-                          span(first) :: span(className := "text-muted", ", ") :: span(second) :: Nil
-                        case other => other.map(span(_))
-                      }.toList,
+                      estimate.flatMap(v => small(className := "text-muted", ", ") :: span(v) :: Nil).drop(1),
                       sup(small(className := "text-muted", s" ($count votes)"))
                     )
                 }
