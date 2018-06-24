@@ -8,26 +8,17 @@ import monix.execution.Cancelable
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.Unbounded
-import org.scalajs.dom.{CloseEvent, ErrorEvent, MessageEvent}
+import org.scalajs.dom._
 import outwatch.Sink
 import io.circe.syntax._
 import io.circe.parser._
 import io.circe.generic.auto._
+
 import scala.concurrent.duration._
-import org.scalajs.dom.WebSocket
 import cats.data.OptionT
 
 object WebSocketSupport {
   val sockets: scala.collection.mutable.Map[String, OpenWebSocket] = scala.collection.mutable.Map.empty
-
-  private def createSocket(url: String): IO[OpenWebSocket] = IO.async { cb =>
-    val ws = new WebSocket(url)
-    ws.onopen = { _ =>
-      val ows = new OpenWebSocket(ws)
-      cb(Right(ows))
-    }
-    ws.onerror = (e: ErrorEvent) => cb(Left(new Exception("Cannot create WebSocket")))
-  }
 
   private def attachPingStream(ows: OpenWebSocket): IO[Unit] = {
     val pings =
@@ -45,7 +36,7 @@ object WebSocketSupport {
       ws <-
         wsOpt.fold(
           for {
-            ows <- createSocket(url)
+            ows <- OpenWebSocket.create(url)
 	          _ <- attachPingStream(ows)
           }
           yield {
@@ -59,9 +50,9 @@ object WebSocketSupport {
   def closeAndRemove(url: String): IO[Option[Unit]] = (
     for {
       ws <- OptionT(IO { sockets.remove(url) })
-      res <- OptionT.liftF(ws.close())
+      _ <- OptionT.liftF(ws.sink <-- Observable.empty)
     }
-    yield res
+    yield ()
   ).value
 
   def send(url: String, message: Protocol.ClientMessage): IO[Action] =
@@ -136,27 +127,39 @@ object WebSocketSupport {
   }
 }
 
-final class OpenWebSocket(ws: WebSocket) {
-    
-  val source: Observable[MessageEvent] =
-    Observable.create[MessageEvent](Unbounded) {
-      observer =>
-        ws.onmessage = (e: MessageEvent) => observer.onNext(e)
-        ws.onerror = (e: ErrorEvent) => observer.onError(new Exception("WebSocket error"))
-        ws.onclose = (e: CloseEvent) => observer.onComplete()
-        Cancelable( () => ws.close() )
+final case class OpenWebSocket(source: Observable[MessageEvent], sink: Sink[String])
+
+object OpenWebSocket {
+
+  private def readyWS(url: String): IO[WebSocket] = IO.async { cb =>
+    val ws = new WebSocket(url)
+    ws.onopen = { _ =>
+      cb(Right(ws))
     }
+    ws.onerror = (_: Event) => cb(Left(new Exception("Cannot create WebSocket")))
+  }
 
-  val sink: Sink[String] =
-    Sink.create[String](
-      s => IO {
-        ws.send(s)
-        Continue
-      },
-      _ => IO.pure(()),
-      () => IO(ws.close())
-    )
-
-  def close(): IO[Unit] = IO { ws.close() }
-
+  def create(url: String): IO[OpenWebSocket] =
+    for {
+      ws <- readyWS(url)
+      source =
+      Observable.create[MessageEvent](Unbounded) {
+        observer =>
+          ws.onmessage = (e: MessageEvent) => observer.onNext(e)
+          ws.onerror = (_: Event) => observer.onError(new Exception("WebSocket error"))
+          ws.onclose = (_: CloseEvent) => observer.onComplete()
+          Cancelable( () => ws.close() )
+      }
+      sink <-
+        Sink.create[String](
+          next = s => {
+            ws.send(s)
+            Continue
+          },
+          complete = () => ws.close()
+        )
+    }
+    yield {
+      new OpenWebSocket(source, sink)
+    }
 }

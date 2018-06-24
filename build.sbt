@@ -38,12 +38,11 @@ lazy val server = project
 
 lazy val client = project
   .enablePlugins(ScalaJSBundlerPlugin, WorkbenchPlugin, GhpagesPlugin)
-  .dependsOn(sharedJs)
+  .dependsOn(sharedJs, outwatch)
   .settings(
     scalaVersion := "2.12.4",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     libraryDependencies ++= Seq(
-      "io.github.outwatch" %%% "outwatch" % versions.outwatch,
       "com.github.werk" %%% "router4s" % versions.router4s
     ),
     npmDependencies in Compile ++= Seq(
@@ -66,6 +65,8 @@ lazy val client = project
       Path.selectSubpaths((Compile / resourceDirectory).value, "index.html").toSeq ++
       (Compile / fullOptJS / webpack).value.map(_.data).map(f => (f, f.name))
   )
+
+lazy val outwatch = RootProject(uri("git://github.com/OutWatch/outwatch.git"))
 
 lazy val commonSettings = Seq(
   libraryDependencies ++= Seq(
