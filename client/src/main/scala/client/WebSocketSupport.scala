@@ -29,11 +29,14 @@ object WebSocketSupport {
     ws.onerror = (e: ErrorEvent) => cb(Left(new Exception("Cannot create WebSocket")))
   }
 
-  private def attachPingStream(ows: OpenWebSocket): IO[Cancelable] = {
+  private def attachPingStream(ows: OpenWebSocket): IO[Unit] = {
     val pings =
       Observable.timerRepeated(1.second, 1.second, Protocol.ClientMessage.Ping: Protocol.ClientMessage)
       .map(_.asJson.noSpaces)
-    ows.sink <-- pings
+    (ows.sink <-- pings).map { sub =>
+      ows.source.doOnTerminate(_ => sub.cancel())
+      ()
+    }
   }
 
   def getOrElseCreate(url: String): IO[OpenWebSocket] =
@@ -43,7 +46,7 @@ object WebSocketSupport {
         wsOpt.fold(
           for {
             ows <- createSocket(url)
-	    _ <- attachPingStream(ows)
+	          _ <- attachPingStream(ows)
           }
           yield {
             sockets.update(url, ows)
