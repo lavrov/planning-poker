@@ -62,7 +62,9 @@ object PlanningSessionView {
                   val status =
                     planningSession.estimates.participantEstimates.get(participant.id)
                       .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "✔️" }
-                  li(className := "list-group-item d-flex justify-content-between align-items-center animated fadeIn",
+                  li(
+                    id := s"player-${participant.id}",
+                    className := "list-group-item d-flex justify-content-between align-items-center animated fadeIn",
                     h5(name),
                     for (st <- status) yield
                       h5(className := "animated bounceIn", st)
