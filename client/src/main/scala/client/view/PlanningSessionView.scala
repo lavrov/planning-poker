@@ -15,7 +15,7 @@ object PlanningSessionView {
     import currentSession.planningSession
     val (players, observers) = planningSession.participants.values.toList.partition(p => planningSession.players(p.id))
     val allGaveEstimates =
-      players.forall(p => planningSession.estimates.participantEstimates.contains(p.id))
+      players.nonEmpty && players.forall(p => planningSession.estimates.participantEstimates.contains(p.id))
     val estimates =
       players
         .flatMap(p => planningSession.estimates.participantEstimates.get(p.id))
