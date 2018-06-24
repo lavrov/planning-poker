@@ -22,7 +22,11 @@ object PlanningSessionView {
         .collect {
           case Card.Number(v) => v
         }
-    def mean = estimates.sum / estimates.size
+    val countToEstimates =
+      estimates
+        .groupBy(identity).mapValues(_.size)
+        .groupBy(_._2).mapValues(_.keys.toList.sorted).toList
+        .sortBy(_._1)(Ordering.Int.reverse)
     def isPlayer = planningSession.players.contains(user.id)
     def becomePlayer = sink.redirectMap[Unit](_ =>
         PlanningPokerApp.Action.SendPlanningSessionAction(
@@ -57,11 +61,11 @@ object PlanningSessionView {
                   val name = participant.name
                   val status =
                     planningSession.estimates.participantEstimates.get(participant.id)
-                      .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "+" }
+                      .map { card => if (allGaveEstimates) CardsView.cardSign(card) else "✔️" }
                   li(className := "list-group-item d-flex justify-content-between align-items-center animated fadeIn",
-                    name,
+                    h5(name),
                     for (st <- status) yield
-                      span(className := "badge badge-primary badge-pill animated bounceIn", st)
+                      h5(className := "animated bounceIn", st)
                   )
               }
             )
@@ -84,7 +88,25 @@ object PlanningSessionView {
             div(className := "card my-3 box-shadow animated fadeIn",
               div(className := "card-header", "Stats"),
               div(className := "card-body",
-                span("Average: ", mean)
+                countToEstimates.zipWithIndex.map {
+                  case ((count, estimate), index) =>
+                    val hTag = index match {
+                      case 0 => h1
+                      case 1 => h2
+                      case 2 => h3
+                      case 3 => h4
+                      case 5 => h5
+                      case _ => h6
+                    }
+                    hTag(className := "text-center",
+                      estimate.sliding(2, 1).flatMap {
+                        case first :: second :: Nil =>
+                          span(first) :: span(className := "text-muted", ", ") :: span(second) :: Nil
+                        case other => other.map(span(_))
+                      }.toList,
+                      sup(small(className := "text-muted", s" ($count votes)"))
+                    )
+                }
               )
             )
           )
